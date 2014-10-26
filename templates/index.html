@@ -1,0 +1,160 @@
+<script src="https://cdnjs.cloudflare.com/ajax/libs/mousetrap/1.4.6/mousetrap.min.js" type="text/javascript" charset="utf-8">
+</script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/ace/1.1.3/ace.js" type="text/javascript" charset="utf-8"></script>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/ace/1.1.3/mode-ruby.js" type="text/javascript" charset="utf-8"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/ace/1.1.3/mode-c_cpp.js" type="text/javascript" charset="utf-8"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/ace/1.1.3/mode-golang.js" type="text/javascript" charset="utf-8"></script>
+<script src="langs.js" type="text/javascript" charset="utf-8"></script>
+
+<div id="nav">
+  <h3 style="color: #ff4040">Sangobox</h3> Online compiler (<a href="https://github.com/h2so5/sango">github</a>)
+  <h3>Language</h3>
+  <ul id="lang">
+    {{ range .images }}
+    <li data-id="{{ .ID }}" data-lang="{{ .Language }}"><a href="javascript:void(0)">{{ .Name }}<p>{{ .Version }}</p></a>
+    </li>
+    {{ end }}
+  </ul>
+</div>
+
+<div id="content">
+  <h3>Code</h3>
+  <div id="code-editor-div"></div>
+
+  <h3>Stdin</h3>
+  <div id="stdin-editor-div"></div>
+
+  <div id="command">
+    <button id="run-bt">Run (Ctrl+Enter)</button>
+  </div>
+
+  <div id="output">
+    <pre class="output strong" id="status"></pre>
+    <pre class="output error" id="stderr"></pre>
+    <pre class="output" id="stdout"></pre>
+  </div>
+</div>
+
+<script>
+  $(function() {
+    var current_lang = '';
+    var current_id = '';
+    var edited = false;
+
+    var code_editor = ace.edit("code-editor-div");
+    var stdin_editor = ace.edit("stdin-editor-div");
+
+    code_editor.setShowPrintMargin(false);
+    stdin_editor.setShowPrintMargin(false);
+
+    code_editor.getSession().on('change', function(e) {
+      edited = true;
+    });
+
+    function applyData(data) {
+      var result = data.output["status"] + "  (Exit code: " + data.output["code"] + ")";
+      if (data.output["running-time"] > 0) {
+        result += "  " + data.output["running-time"].toFixed(4) + " sec";
+      }
+      $('#status').text(result);
+      $('#stdout').text(data.output["run-stdout"]);
+      $('#stderr').text(data.output["run-stderr"] + data.output["build-stderr"]);
+      for (var f in data.input.files) {
+        code_editor.getSession().setValue(data.input.files[f]);
+      }
+      stdin_editor.getSession().setValue(data.input.stdin);
+    }
+
+    function run() {
+      var code = code_editor.getSession().getValue();
+      var stdin = stdin_editor.getSession().getValue();
+      if (code.trim().length == 0) {
+        return;
+      }
+
+      var files = {};
+      files["main." + lang_settings[current_lang].extension] = code;
+      Pace.track(function() {
+        $.post('/api/run',
+          JSON.stringify({
+            "environment": current_id,
+            "input": {
+              "files": files,
+              "stdin": stdin
+            }
+          }),
+          function(data) {
+            applyData(data);
+            window.history.pushState(null, "", "/" + data.id);
+          },
+          'json');
+      });
+    }
+
+    $('#run-bt').click(run);
+
+    code_editor.commands.addCommand({
+      name: "run",
+      bindKey: {
+        win: "Ctrl-Enter",
+        mac: "Command-Enter"
+      },
+      exec: run
+    });
+
+    stdin_editor.commands.addCommand({
+      name: "run",
+      bindKey: {
+        win: "Ctrl-Enter",
+        mac: "Command-Enter"
+      },
+      exec: run
+    });
+
+    Mousetrap.bind('ctrl+enter', function(e) {
+      run();
+      return false;
+    });
+
+    var logid = '{{ .logid }}';
+    if (logid.length > 0) {
+      $.get('/api/log/' + logid, {},
+        function(data) {
+          applyData(data);
+          selectLang(data.environment.id);
+        },
+        'json');
+    } else {
+      selectLang('go-latest');
+    }
+
+    $('#lang li').click(function() {
+      selectLang($(this).attr('data-id'));
+    });
+
+    function selectLang(id) {
+      $li = $('#lang li[data-id=' + id + ']');
+      if ($li.length > 0) {
+        $('#lang li').removeClass('selected');
+        $li.addClass('selected');
+        var lang = $li.attr('data-lang');
+        if (lang in lang_settings) {
+          code_editor.getSession().setMode(lang_settings[lang]["ace-mode"]);
+          code_editor.renderer.updateFull();
+          current_id = id;
+          current_lang = lang;
+          if (!edited) {
+            $.get('/template/' + lang + '.txt', {},
+              function(data) {
+                var e = edited;
+                code_editor.getSession().setValue(data);
+                edited = e;
+              });
+          }
+        }
+      }
+    }
+
+  });
+</script>
