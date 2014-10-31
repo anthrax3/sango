@@ -55,7 +55,7 @@ func (i Image) Exec(in Input) (Output, error) {
 	}()
 
 	select {
-	case <-time.After(time.Second * 5):
+	case <-time.After(time.Second * 8):
 		stopcmd := exec.Command("docker", "stop", "--time=0", id)
 		stopcmd.Run()
 		err = <-ch
