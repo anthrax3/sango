@@ -55,22 +55,23 @@ func (i Image) Exec(in Input) (Output, error) {
 	}()
 
 	select {
-	case <-time.After(time.Second * 15):
-		stopcmd := exec.Command("docker", "stop", id)
+	case <-time.After(time.Second * 5):
+		stopcmd := exec.Command("docker", "stop", "--time=0", id)
 		stopcmd.Run()
 		err = <-ch
 	case err = <-ch:
 	}
 
+	var out Output
 	if err != nil {
-		return Output{}, err
+		out.Status = "Internal error"
+	} else {
+		err = msgpack.Unmarshal(stdout.Bytes(), &out)
+		if err != nil {
+			return Output{}, err
+		}
 	}
 
-	var out Output
-	err = msgpack.Unmarshal(stdout.Bytes(), &out)
-	if err != nil {
-		return Output{}, err
-	}
 	return out, nil
 }
 
