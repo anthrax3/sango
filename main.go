@@ -1,28 +1,32 @@
 package main
 
 import (
+	"bitbucket.org/kardianos/osext"
 	"encoding/json"
 	"flag"
 	"fmt"
-	"io"
-	"io/ioutil"
-	"log"
-	"math/rand"
-	"net/http"
-	"runtime"
-	"sort"
-	"sync"
-	"time"
-
 	"github.com/go-martini/martini"
 	"github.com/martini-contrib/gzip"
 	"github.com/martini-contrib/render"
 	"github.com/syndtr/goleveldb/leveldb"
 	"github.com/vmihailenco/msgpack"
 	"gopkg.in/yaml.v2"
+	"io"
+	"io/ioutil"
+	"log"
+	"math/rand"
+	"net/http"
+	"os"
+	"runtime"
+	"sort"
+	"sync"
+	"time"
+	"path/filepath"
 
 	sango "./src"
 )
+
+var sangoPath string
 
 var forceBuild *bool = flag.Bool("b", false, "Force to rebuild all docker images on startup")
 var configFile *string = flag.String("f", "/etc/sango.yml", "Specify config file")
@@ -74,6 +78,7 @@ func LoadConfig(path string) Config {
 func NewSango(conf Config) *Sango {
 	m := martini.Classic()
 	m.Use(gzip.All())
+	m.Use(martini.Static(filepath.Join(sangoPath,"public")))
 	m.Use(render.Renderer(render.Options{
 		Layout:     "layout",
 		Extensions: []string{".html"},
@@ -234,6 +239,17 @@ func main() {
 	flag.Parse()
 	rand.Seed(time.Now().Unix())
 	runtime.GOMAXPROCS(runtime.NumCPU())
+
+	path, err := osext.ExecutableFolder()
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	err = os.Chdir(path)
+	if err != nil {
+		log.Fatal(err)
+	}
+	sangoPath = path	
 
 	conf := LoadConfig(*configFile)
 	if !*noRun {
