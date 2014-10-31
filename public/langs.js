@@ -10,5 +10,9 @@ var lang_settings = {
     "C++": {
       "extension": "cpp",
       "ace-mode": "ace/mode/c_cpp"
+    },
+    "PHP": {
+      "extension": "php",
+      "ace-mode": "ace/mode/php"
     }
 };
