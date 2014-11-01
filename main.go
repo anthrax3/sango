@@ -40,6 +40,7 @@ type Sango struct {
 	db     *leveldb.DB
 	images sango.ImageList
 	mutex  sync.RWMutex
+	reqch  chan int
 }
 
 type Config struct {
@@ -47,6 +48,7 @@ type Config struct {
 	Database        string        `yaml:"database"`
 	ImageDir        string        `yaml:"image_dir"`
 	UploadLimit     int64         `yaml:"upload_limit"`
+	ExecLimit       int           `yaml:"exec_limit"`
 	RebuildInterval time.Duration `yaml:"rebuild_interval"`
 	GoogleAnalytics string        `yaml:"google_analytics"`
 }
@@ -58,6 +60,7 @@ func defaultConfig() Config {
 		ImageDir:        "./images",
 		UploadLimit:     20480,
 		RebuildInterval: time.Minute * 10,
+		ExecLimit:       5,
 		GoogleAnalytics: "",
 	}
 }
@@ -97,6 +100,7 @@ func NewSango(conf Config) *Sango {
 		conf:           conf,
 		db:             db,
 		images:         images,
+		reqch:          make(chan int, conf.ExecLimit),
 	}
 
 	ch := time.Tick(conf.RebuildInterval)
@@ -176,6 +180,8 @@ func (s *Sango) apiRun(r render.Render, req *http.Request) {
 		r.JSON(501, map[string]string{"error": "No such environment"})
 		return
 	} else {
+		s.reqch <- 0
+		defer func() { <-s.reqch }()
 		ver, err := img.GetVersion()
 		if err != nil {
 			log.Print(err)
