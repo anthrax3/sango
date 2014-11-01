@@ -253,6 +253,7 @@ type ExecResponse struct {
 }
 
 func main() {
+	log.SetFlags(log.LstdFlags | log.Lshortfile)
 	flag.Parse()
 	rand.Seed(time.Now().Unix())
 	runtime.GOMAXPROCS(runtime.NumCPU())
