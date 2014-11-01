@@ -1,27 +1,28 @@
 package main
 
 import (
-	"bitbucket.org/kardianos/osext"
 	"encoding/json"
 	"flag"
 	"fmt"
-	"github.com/go-martini/martini"
-	"github.com/martini-contrib/gzip"
-	"github.com/martini-contrib/render"
-	"github.com/syndtr/goleveldb/leveldb"
-	"github.com/vmihailenco/msgpack"
-	"gopkg.in/yaml.v2"
 	"io"
 	"io/ioutil"
 	"log"
 	"math/rand"
 	"net/http"
 	"os"
+	"path/filepath"
 	"runtime"
 	"sort"
 	"sync"
 	"time"
-	"path/filepath"
+
+	"bitbucket.org/kardianos/osext"
+	"github.com/go-martini/martini"
+	"github.com/martini-contrib/gzip"
+	"github.com/martini-contrib/render"
+	"github.com/syndtr/goleveldb/leveldb"
+	"github.com/vmihailenco/msgpack"
+	"gopkg.in/yaml.v2"
 
 	sango "./src"
 )
@@ -78,7 +79,7 @@ func LoadConfig(path string) Config {
 func NewSango(conf Config) *Sango {
 	m := martini.Classic()
 	m.Use(gzip.All())
-	m.Use(martini.Static(filepath.Join(sangoPath,"public")))
+	m.Use(martini.Static(filepath.Join(sangoPath, "public")))
 	m.Use(render.Renderer(render.Options{
 		Layout:     "layout",
 		Extensions: []string{".html"},
@@ -151,11 +152,17 @@ func (s *Sango) apiImageList(r render.Render) {
 }
 
 func (s *Sango) apiRun(r render.Render, req *http.Request) {
-	d := json.NewDecoder(io.LimitReader(req.Body, s.conf.UploadLimit))
+	reader := io.LimitReader(req.Body, s.conf.UploadLimit)
+	d := json.NewDecoder(reader)
 	var ereq ExecRequest
 	err := d.Decode(&ereq)
 	if err != nil {
-		r.JSON(400, map[string]string{"error": "Bad request"})
+		log.Print(err)
+		if reader.(*io.LimitedReader).N <= 0 {
+			r.JSON(413, map[string]string{"error": "Too large input"})
+		} else {
+			r.JSON(400, map[string]string{"error": "Bad request"})
+		}
 		return
 	}
 	if len(ereq.Input.Files) == 0 {
@@ -166,17 +173,19 @@ func (s *Sango) apiRun(r render.Render, req *http.Request) {
 	img, ok := s.images[ereq.Environment]
 	s.mutex.RUnlock()
 	if !ok {
-		r.JSON(400, map[string]string{"error": "No such environment"})
+		r.JSON(501, map[string]string{"error": "No such environment"})
 		return
 	} else {
 		ver, err := img.GetVersion()
 		if err != nil {
+			log.Print(err)
 			r.JSON(500, map[string]string{"error": "Internal error"})
 			return
 		}
 		img.Version = ver
 		out, err := img.Exec(ereq.Input)
 		if err != nil {
+			log.Print(err)
 			r.JSON(500, map[string]string{"error": "Internal error"})
 			return
 		}
@@ -190,11 +199,11 @@ func (s *Sango) apiRun(r render.Render, req *http.Request) {
 			res.ID = sango.GenerateID()
 			data, err := msgpack.Marshal(res)
 			if err != nil {
-				log.Fatal(err)
+				log.Print(err)
 			} else {
 				err := s.db.Put([]byte(res.ID), data, nil)
 				if err != nil {
-					log.Fatal(err)
+					log.Print(err)
 				}
 			}
 		}
@@ -205,12 +214,14 @@ func (s *Sango) apiRun(r render.Render, req *http.Request) {
 func (s *Sango) apiLog(r render.Render, params martini.Params) {
 	data, err := s.db.Get([]byte(params["id"]), nil)
 	if err != nil {
+		log.Print(err)
 		r.JSON(404, map[string]string{"error": "Not found"})
 		return
 	}
 	var res ExecResponse
 	err = msgpack.Unmarshal(data, &res)
 	if err != nil {
+		log.Print(err)
 		r.JSON(500, map[string]string{"error": "Internal error"})
 		return
 	}
@@ -249,7 +260,7 @@ func main() {
 	if err != nil {
 		log.Fatal(err)
 	}
-	sangoPath = path	
+	sangoPath = path
 
 	conf := LoadConfig(*configFile)
 	if !*noRun {
