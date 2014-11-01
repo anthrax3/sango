@@ -47,7 +47,7 @@ type Config struct {
 	ImageDir        string        `yaml:"image_dir"`
 	UploadLimit     int64         `yaml:"upload_limit"`
 	ExecLimit       int           `yaml:"exec_limit"`
-	CleanInterval time.Duration `yaml:"clean_interval"`
+	CleanInterval   time.Duration `yaml:"clean_interval"`
 	GoogleAnalytics string        `yaml:"google_analytics"`
 }
 
@@ -57,7 +57,7 @@ func defaultConfig() Config {
 		Database:        "./sango.leveldb",
 		ImageDir:        "./images",
 		UploadLimit:     20480,
-		CleanInterval: time.Minute * 5,
+		CleanInterval:   time.Minute,
 		ExecLimit:       5,
 		GoogleAnalytics: "",
 	}
@@ -175,12 +175,6 @@ func (s *Sango) apiRun(r render.Render, req *http.Request) {
 	} else {
 		s.reqch <- 0
 		defer func() { <-s.reqch }()
-		ver, err := img.GetVersion()
-		if err != nil {
-			log.Print(err)
-		} else {
-			img.Version = ver
-		}
 		out, err := img.Exec(ereq.Input)
 		if err != nil {
 			log.Print(err)
