@@ -9,6 +9,7 @@ import (
 	"os/exec"
 	"path/filepath"
 	"time"
+	"strings"
 
 	"github.com/h2so5/docker/api/client"
 	"github.com/vmihailenco/msgpack"
@@ -34,7 +35,7 @@ func (i Image) GetVersion() (string, error) {
 	if c == nil {
 		return "", errors.New("failed to create docker client")
 	}
-	err := c.CmdRun("--rm", "-i", "--net=none", i.dockerImageName(), "./run", "-v")
+	err := c.CmdRun("-i", "--net=none", i.dockerImageName(), "./run", "-v")
 	if err != nil {
 		return "", err
 	} else {
@@ -57,7 +58,7 @@ func (i Image) Exec(in Input) (Output, error) {
 
 	ch := make(chan error, 1)
 	go func() {
-		ch <- c.CmdRun("--rm", "-i", "--name", id, "--net=none", i.dockerImageName(), "./run")
+		ch <- c.CmdRun("-i", "--name", id, "--net=none", i.dockerImageName(), "./run")
 	}()
 
 	select {
@@ -133,6 +134,28 @@ func buildImage(dir, image string, nocache bool) error {
 	err = os.Chdir(pwd)
 	if err != nil {
 		return err
+	}
+
+	return nil
+}
+
+func CleanImages() error {
+	var stdout bytes.Buffer
+	c := client.NewDockerCli(nil, &stdout, os.Stderr, "unix", dockerAddr, nil)
+	if c == nil {
+		return errors.New("failed to create docker client")
+	}
+
+	err := c.CmdPs("-a", "-q")
+	if err != nil {
+		return err
+	}
+	ps := strings.Split(string(stdout.Bytes()), "\n")
+	if (len(ps) > 1) {
+		err = c.CmdRm(ps[:len(ps)-1]...)
+		if err != nil {
+			return err
+		}
 	}
 
 	return nil

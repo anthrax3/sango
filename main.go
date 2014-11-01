@@ -13,7 +13,6 @@ import (
 	"path/filepath"
 	"runtime"
 	"sort"
-	"sync"
 	"time"
 
 	"bitbucket.org/kardianos/osext"
@@ -39,7 +38,6 @@ type Sango struct {
 	conf   Config
 	db     *leveldb.DB
 	images sango.ImageList
-	mutex  sync.RWMutex
 	reqch  chan int
 }
 
@@ -49,7 +47,7 @@ type Config struct {
 	ImageDir        string        `yaml:"image_dir"`
 	UploadLimit     int64         `yaml:"upload_limit"`
 	ExecLimit       int           `yaml:"exec_limit"`
-	RebuildInterval time.Duration `yaml:"rebuild_interval"`
+	CleanInterval time.Duration `yaml:"clean_interval"`
 	GoogleAnalytics string        `yaml:"google_analytics"`
 }
 
@@ -59,7 +57,7 @@ func defaultConfig() Config {
 		Database:        "./sango.leveldb",
 		ImageDir:        "./images",
 		UploadLimit:     20480,
-		RebuildInterval: time.Minute * 10,
+		CleanInterval: time.Minute * 5,
 		ExecLimit:       5,
 		GoogleAnalytics: "",
 	}
@@ -93,6 +91,7 @@ func NewSango(conf Config) *Sango {
 		log.Fatal(err)
 	}
 
+	sango.CleanImages()
 	images := sango.MakeImageList(conf.ImageDir, *forceBuild, *noCache)
 
 	s := &Sango{
@@ -103,14 +102,12 @@ func NewSango(conf Config) *Sango {
 		reqch:          make(chan int, conf.ExecLimit),
 	}
 
-	ch := time.Tick(conf.RebuildInterval)
+	ch := time.Tick(conf.CleanInterval)
 	go func() {
 		for {
 			<-ch
-			images := sango.MakeImageList(conf.ImageDir, false, false)
-			s.mutex.Lock()
-			s.images = images
-			s.mutex.Unlock()
+			log.Print("cleaning images...")
+			sango.CleanImages()
 		}
 	}()
 
@@ -142,11 +139,9 @@ func (s *Sango) log(r render.Render, params martini.Params) {
 
 func (s *Sango) imageArray() []sango.Image {
 	l := make(sango.ImageArray, 0, len(s.images))
-	s.mutex.RLock()
 	for _, v := range s.images {
 		l = append(l, v)
 	}
-	s.mutex.RUnlock()
 	sort.Sort(l)
 	return l
 }
@@ -173,9 +168,7 @@ func (s *Sango) apiRun(r render.Render, req *http.Request) {
 		r.JSON(400, map[string]string{"error": "No input files"})
 		return
 	}
-	s.mutex.RLock()
 	img, ok := s.images[ereq.Environment]
-	s.mutex.RUnlock()
 	if !ok {
 		r.JSON(501, map[string]string{"error": "No such environment"})
 		return
