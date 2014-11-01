@@ -58,7 +58,7 @@ func (i Image) Exec(in Input) (Output, error) {
 
 	ch := make(chan error, 1)
 	go func() {
-		ch <- c.CmdRun("-i", "--name", id, "--net=none", i.dockerImageName(), "./run")
+		ch <- c.CmdRun("-i", "--name", id, "--net=none", i.dockerImageName(), "nice", "-n", "20", "./run")
 	}()
 
 	select {
