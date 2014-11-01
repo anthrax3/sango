@@ -34,7 +34,7 @@ func (i Image) GetVersion() (string, error) {
 	if c == nil {
 		return "", errors.New("failed to create docker client")
 	}
-	err := c.CmdRun("--rm", "-i", "--net=none", i.dockerImageName(), "cat", "/sango/version")
+	err := c.CmdRun("--rm", "-i", "--net=none", i.dockerImageName(), "./run", "-v")
 	if err != nil {
 		return "", err
 	} else {

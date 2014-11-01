@@ -5,14 +5,26 @@ import (
 	"os"
 	"runtime"
 	"time"
+	"flag"
 
 	sango "../../src"
 
 	"github.com/vmihailenco/msgpack"
-)
+	)
+
+	var version *bool = flag.Bool("v", false, "")
 
 func main() {
+	flag.Parse()
 	runtime.GOMAXPROCS(runtime.NumCPU())
+
+	if (*version) {
+		v, err := ioutil.ReadFile("/sango/version")
+		if err == nil {
+			os.Stdout.Write(v)
+		}
+		return
+	}
 
 	var out sango.Output
 	defer func() {
