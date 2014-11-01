@@ -185,10 +185,9 @@ func (s *Sango) apiRun(r render.Render, req *http.Request) {
 		ver, err := img.GetVersion()
 		if err != nil {
 			log.Print(err)
-			r.JSON(500, map[string]string{"error": "Internal error"})
-			return
+		} else {
+			img.Version = ver
 		}
-		img.Version = ver
 		out, err := img.Exec(ereq.Input)
 		if err != nil {
 			log.Print(err)
