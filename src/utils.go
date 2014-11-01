@@ -54,6 +54,20 @@ func (e TimeoutError) Error() string {
 	return "timeout"
 }
 
+type CloserReader struct {
+	*bytes.Reader
+}
+
+func NewCloserReader(b []byte) *CloserReader {
+	return &CloserReader{
+		Reader: bytes.NewReader(b),
+	}
+}
+
+func (c CloserReader) Close() error {
+	return nil
+}
+
 func Exec(command string, args []string, stdin string, timeout time.Duration) (string, string, error, int, int) {
 	cmd := exec.Command(command, args...)
 	var stdout, stderr LimitedBuffer

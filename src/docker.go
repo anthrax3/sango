@@ -2,6 +2,7 @@ package sango
 
 import (
 	"bytes"
+	"errors"
 	"io/ioutil"
 	"log"
 	"os"
@@ -9,9 +10,12 @@ import (
 	"path/filepath"
 	"time"
 
+	"github.com/h2so5/docker/api/client"
 	"github.com/vmihailenco/msgpack"
 	"gopkg.in/yaml.v2"
 )
+
+const dockerAddr = "/var/run/docker.sock"
 
 type Image struct {
 	ID       string `yaml:"id"        json:"id"`
@@ -26,9 +30,11 @@ func (i Image) dockerImageName() string {
 
 func (i Image) GetVersion() (string, error) {
 	var stdout bytes.Buffer
-	cmd := exec.Command("docker", "run", "--rm", "-i", "--net='none'", i.dockerImageName(), "cat", "/sango/version")
-	cmd.Stdout = &stdout
-	err := cmd.Run()
+	c := client.NewDockerCli(nil, &stdout, nil, "unix", dockerAddr, nil)
+	if c == nil {
+		return "", errors.New("failed to create docker client")
+	}
+	err := c.CmdRun("--rm", "-i", "--net=none", i.dockerImageName(), "cat", "/sango/version")
 	if err != nil {
 		return "", err
 	} else {
@@ -43,21 +49,20 @@ func (i Image) Exec(in Input) (Output, error) {
 	}
 	id := GenerateID()
 	var stdout, stderr bytes.Buffer
-	cmd := exec.Command("docker", "run", "--rm", "-i", "--name", id, "--net='none'", i.dockerImageName(), "./run")
-	cmd.Stdin = bytes.NewReader(data)
-	cmd.Stdout = &stdout
-	cmd.Stderr = &stderr
-	cmd.Start()
+
+	c := client.NewDockerCli(NewCloserReader(data), &stdout, &stderr, "unix", dockerAddr, nil)
+	if c == nil {
+		return Output{}, errors.New("failed to create docker client")
+	}
 
 	ch := make(chan error, 1)
 	go func() {
-		ch <- cmd.Wait()
+		ch <- c.CmdRun("--rm", "-i", "--name", id, "--net=none", i.dockerImageName(), "./run")
 	}()
 
 	select {
 	case <-time.After(time.Second * 8):
-		stopcmd := exec.Command("docker", "stop", "--time=0", id)
-		stopcmd.Run()
+		c.CmdStop("--time=0", id)
 		err = <-ch
 	case err = <-ch:
 	}
@@ -76,8 +81,12 @@ func (i Image) Exec(in Input) (Output, error) {
 }
 
 func (i Image) exists() bool {
-	cmd := exec.Command("docker", "inspect", i.dockerImageName())
-	err := cmd.Run()
+	var stdout bytes.Buffer
+	c := client.NewDockerCli(nil, &stdout, nil, "unix", dockerAddr, nil)
+	if c == nil {
+		return false
+	}
+	err := c.CmdInspect(i.dockerImageName())
 	return err == nil
 }
 
@@ -99,16 +108,19 @@ func buildImage(dir, image string, nocache bool) error {
 		return err
 	}
 
-	c := "--no-cache="
+	nc := "--no-cache="
 	if nocache {
-		c += "true"
+		nc += "true"
 	} else {
-		c += "false"
+		nc += "false"
 	}
-	cmd = exec.Command("docker", "build", c, "-t", image, ".")
-	cmd.Stdout = os.Stdout
-	cmd.Stderr = os.Stderr
-	err = cmd.Run()
+
+	c := client.NewDockerCli(nil, os.Stdout, os.Stderr, "unix", dockerAddr, nil)
+	if c == nil {
+		return errors.New("failed to create docker client")
+	}
+
+	err = c.CmdBuild(nc, "-t", image, ".")
 	if err != nil {
 		return err
 	}
