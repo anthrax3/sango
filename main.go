@@ -150,7 +150,7 @@ func (s *Sango) apiImageList(r render.Render) {
 	r.JSON(200, s.imageArray())
 }
 
-func (s *Sango) apiRun(r render.Render, req *http.Request) {
+func (s *Sango) apiRun(r render.Render, res http.ResponseWriter, req *http.Request) {
 	reader := io.LimitReader(req.Body, s.conf.UploadLimit)
 	d := json.NewDecoder(reader)
 	var ereq ExecRequest
@@ -175,31 +175,48 @@ func (s *Sango) apiRun(r render.Render, req *http.Request) {
 	} else {
 		s.reqch <- 0
 		defer func() { <-s.reqch }()
-		out, err := img.Exec(ereq.Input, nil)
+
+		res.Header().Set("Content-Type", "application/json")
+		res.WriteHeader(200)
+
+		msgch := make(chan *sango.Message)
+		go func() {
+			for {
+				m := <- msgch
+				if m == nil {
+					return
+				}
+				log.Print(m)
+				data, _ := json.Marshal(m)
+				res.Write(data)
+				res.(http.Flusher).Flush()
+			}
+		}()
+
+		out, err := img.Exec(ereq.Input, msgch)
 		if err != nil {
 			log.Print(err)
-			r.JSON(500, map[string]string{"error": "Internal error"})
-			return
 		}
-		res := ExecResponse{
+		eres := ExecResponse{
 			Environment: img,
 			Input:       ereq.Input,
 			Output:      out,
 			Date:        time.Now(),
 		}
 		if !ereq.Volatile {
-			res.ID = sango.GenerateID()
-			data, err := msgpack.Marshal(res)
+			eres.ID = sango.GenerateID()
+			data, err := msgpack.Marshal(eres)
 			if err != nil {
 				log.Print(err)
 			} else {
-				err := s.db.Put([]byte(res.ID), data, nil)
+				err := s.db.Put([]byte(eres.ID), data, nil)
 				if err != nil {
 					log.Print(err)
 				}
 			}
 		}
-		r.JSON(200, res)
+		data, _ := json.Marshal(eres)
+		res.Write(data)
 	}
 }
 
@@ -228,6 +245,7 @@ type ExecRequest struct {
 	Environment string      `json:"environment"`
 	Volatile    bool        `json:"volatile"`
 	Input       sango.Input `json:"input"`
+	Streaming   bool        `json:"streaming"`
 }
 
 type ExecResponse struct {

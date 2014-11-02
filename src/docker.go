@@ -44,7 +44,7 @@ func (i Image) GetVersion() (string, error) {
 	}
 }
 
-func (i Image) Exec(in Input, msgch chan<- Message) (Output, error) {
+func (i Image) Exec(in Input, msgch chan<- *Message) (Output, error) {
 	data, err := msgpack.Marshal(in)
 	if err != nil {
 		return Output{}, err
@@ -69,14 +69,16 @@ func (i Image) Exec(in Input, msgch chan<- Message) (Output, error) {
 			var m Message
 			err := d.Decode(&m)
 			if err != nil {
-				log.Print(err)
+				if msgch != nil {
+					close(msgch)
+				}
 				return
 			}
 			if m.Tag == "result" {
 				outch <- m
 			} else {
 				if msgch != nil {
-					msgch <- m
+					msgch <- &m
 				}
 			}
 		}
@@ -89,12 +91,15 @@ func (i Image) Exec(in Input, msgch chan<- Message) (Output, error) {
 	case err = <-ch:
 	}
 
+	r.Close()
+	w.Close()
+
 	var out Output
 	if err != nil {
 		out.Status = "Internal error"
 	} else {
 		m := <-outch
-		err = msgpack.Unmarshal(m.Data, &out)
+		err = msgpack.Unmarshal([]byte(m.Data), &out)
 		if err != nil {
 			return Output{}, err
 		}

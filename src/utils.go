@@ -67,8 +67,8 @@ func NewCloserReader(b []byte) *CloserReader {
 }
 
 type Message struct {
-	Tag  string `msgpack:"t"`
-	Data []byte `msgpack:"d"`
+	Tag  string `msgpack:"t" json:"tag"`
+	Data string `msgpack:"d" json:"data"`
 }
 
 type MsgpackFilter struct {
@@ -79,7 +79,7 @@ type MsgpackFilter struct {
 func (j *MsgpackFilter) Write(p []byte) (n int, err error) {
 	v := Message {
 		Tag: j.Tag,
-		Data: p,
+		Data: string(p),
 	}
 	data, err := msgpack.Marshal(v)
 	if err != nil {
@@ -108,6 +108,7 @@ func Exec(command string, args []string, stdin string, rstdout, rstderr io.Write
 		return "", "", err, 0, 0
 	}
 
+	// TODO: Use io.Pipe
 	go func() {
 		for {
 			var buf [128]byte
@@ -124,6 +125,7 @@ func Exec(command string, args []string, stdin string, rstdout, rstderr io.Write
 		}
 	}()
 
+	// TODO: Use io.Pipe
 	go func() {
 		for {
 			var buf [128]byte

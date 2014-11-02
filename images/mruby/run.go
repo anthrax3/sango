@@ -29,7 +29,7 @@ func main() {
 	var out sango.Output
 	defer func() {
 		d, _ := msgpack.Marshal(out)
-		m := sango.Message{Tag: "result", Data: d}
+		m := sango.Message{Tag: "result", Data: string(d)}
 		e := msgpack.NewEncoder(os.Stdout)
 		e.Encode(m)
 		os.Stdout.Close()
