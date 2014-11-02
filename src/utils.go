@@ -8,6 +8,8 @@ import (
 	"strings"
 	"syscall"
 	"time"
+	"io"
+	"encoding/json"
 
 	"github.com/tv42/base58"
 )
@@ -64,16 +66,79 @@ func NewCloserReader(b []byte) *CloserReader {
 	}
 }
 
+type JSONFilter struct {
+	Writer io.Writer
+	Tag string
+}
+
+func (j *JSONFilter) Write(p []byte) (n int, err error) {
+	v := struct{
+		Tag string `json:"tag"`
+		Data string `json:"data"`
+	}{
+		j.Tag,
+		string(p),
+	}
+	data, err := json.Marshal(v)
+	if err != nil {
+		return 0, err
+	}
+	_, err = j.Writer.Write(data)
+	_, err = j.Writer.Write([]byte("\n"))
+	return len(p), err
+}
+
 func (c CloserReader) Close() error {
 	return nil
 }
 
-func Exec(command string, args []string, stdin string, timeout time.Duration) (string, string, error, int, int) {
+func Exec(command string, args []string, stdin string, rstdout, rstderr io.Writer, timeout time.Duration) (string, string, error, int, int) {
 	cmd := exec.Command(command, args...)
-	var stdout, stderr LimitedBuffer
+	var stdout, stderr bytes.Buffer
 	cmd.Stdin = strings.NewReader(stdin)
-	cmd.Stdout = &stdout
-	cmd.Stderr = &stderr
+
+	stdoutp, err := cmd.StdoutPipe()
+	if err != nil {
+		return "", "", err, 0, 0
+	}
+
+	stderrp, err := cmd.StderrPipe()
+	if err != nil {
+		return "", "", err, 0, 0
+	}
+
+	go func() {
+		for {
+			var buf [128]byte
+			l, err := stdoutp.Read(buf[:])
+			if err != nil {
+				return
+			}
+			if l > 0 {
+				stdout.Write(buf[:l])
+				if (rstdout != nil) {
+					rstdout.Write(buf[:l])
+				}
+			}
+		}
+	}()
+
+	go func() {
+		for {
+			var buf [128]byte
+			l, err := stderrp.Read(buf[:])
+			if err != nil {
+				return
+			}
+			if l > 0 {
+				stderr.Write(buf[:l])
+				if (rstderr != nil) {
+					rstderr.Write(buf[:l])
+				}
+			}
+		}
+	}()
+
 	cmd.Start()
 
 	ch := make(chan error, 1)
@@ -86,7 +151,7 @@ func Exec(command string, args []string, stdin string, timeout time.Duration) (s
 		timech = time.After(timeout)
 	}
 
-	var err error
+	err = nil
 	var timeouterr bool
 	select {
 	case <-timech:

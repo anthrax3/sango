@@ -10,6 +10,7 @@ import (
 	"path/filepath"
 	"time"
 	"strings"
+	"io"
 
 	"github.com/h2so5/docker/api/client"
 	"github.com/vmihailenco/msgpack"
@@ -43,15 +44,18 @@ func (i Image) GetVersion() (string, error) {
 	}
 }
 
-func (i Image) Exec(in Input) (Output, error) {
+func (i Image) Exec(in Input, jsonout io.Writer) (Output, error) {
 	data, err := msgpack.Marshal(in)
 	if err != nil {
 		return Output{}, err
 	}
 	id := GenerateID()
-	var stdout, stderr bytes.Buffer
-
-	c := client.NewDockerCli(NewCloserReader(data), &stdout, &stderr, "unix", dockerAddr, nil)
+	var stdout bytes.Buffer
+	stderr := jsonout
+	if stderr == nil {
+		stderr = &bytes.Buffer{}
+	}
+	c := client.NewDockerCli(NewCloserReader(data), &stdout, stderr, "unix", dockerAddr, nil)
 	if c == nil {
 		return Output{}, errors.New("failed to create docker client")
 	}

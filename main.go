@@ -175,7 +175,7 @@ func (s *Sango) apiRun(r render.Render, req *http.Request) {
 	} else {
 		s.reqch <- 0
 		defer func() { <-s.reqch }()
-		out, err := img.Exec(ereq.Input)
+		out, err := img.Exec(ereq.Input, nil)
 		if err != nil {
 			log.Print(err)
 			r.JSON(500, map[string]string{"error": "Internal error"})

@@ -53,7 +53,7 @@ func main() {
 	}
 
 	start := time.Now()
-	stdout, stderr, err, code, signal := sango.Exec("/mruby/build/host/bin/mruby", args, in.Stdin, 5*time.Second)
+	stdout, stderr, err, code, signal := sango.Exec("/mruby/build/host/bin/mruby", args, in.Stdin, nil, nil, 5*time.Second)
 	out.RunningTime = time.Now().Sub(start).Seconds()
 	out.RunStdout = stdout
 	out.RunStderr = stderr

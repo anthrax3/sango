@@ -55,7 +55,7 @@ func main() {
 		args = append(args, k)
 	}
 
-	stdout, stderr, err, code, signal := sango.Exec("g++", args, "", 5*time.Second)
+	stdout, stderr, err, code, signal := sango.Exec("g++", args, "", nil, nil, 5*time.Second)
 	out.BuildStdout = stdout
 	out.BuildStderr = stderr
 	out.Code = code
@@ -70,7 +70,7 @@ func main() {
 	}
 
 	start := time.Now()
-	stdout, stderr, err, code, signal = sango.Exec("./main", nil, in.Stdin, 5*time.Second)
+	stdout, stderr, err, code, signal = sango.Exec("./main", nil, in.Stdin, nil, nil, 5*time.Second)
 	out.RunningTime = time.Now().Sub(start).Seconds()
 	out.RunStdout = stdout
 	out.RunStderr = stderr
