@@ -43,6 +43,7 @@
     var current_lang = '';
     var current_id = '';
     var edited = false;
+    var running = false;
 
     var code_editor = ace.edit("code-editor-div");
     var stdin_editor = ace.edit("stdin-editor-div");
@@ -54,7 +55,7 @@
       edited = true;
     });
 
-    function applyData(data) {
+    function applyData(data, input) {
       var result = data.output["status"] + "  (Exit code: " + data.output["code"] + ")";
       if (data.output["running-time"] > 0) {
         result += "  " + data.output["running-time"].toFixed(4) + " sec";
@@ -62,35 +63,46 @@
       $('#status').text(result);
       $('#stdout').text(data.output["run-stdout"]);
       $('#stderr').text(data.output["run-stderr"] + data.output["build-stderr"]);
-      for (var f in data.input.files) {
-        code_editor.getSession().setValue(data.input.files[f]);
+
+      if (input) {
+        for (var f in data.input.files) {
+          code_editor.getSession().setValue(data.input.files[f]);
+        }
+        stdin_editor.getSession().setValue(data.input.stdin);
       }
-      stdin_editor.getSession().setValue(data.input.stdin);
     }
 
     function run() {
       var code = code_editor.getSession().getValue();
       var stdin = stdin_editor.getSession().getValue();
-      if (code.trim().length == 0) {
+      if (running || code.trim().length == 0) {
         return;
       }
 
+      running = true;
       var files = {};
       files["main." + lang_settings[current_lang].extension] = code;
+      var data = JSON.stringify({
+        "environment": current_id,
+        "input": {
+          "files": files,
+          "stdin": stdin
+        }
+      });
+
       Pace.track(function() {
-        $.post('/api/run',
-          JSON.stringify({
-            "environment": current_id,
-            "input": {
-              "files": files,
-              "stdin": stdin
-            }
-          }),
-          function(data) {
-            applyData(data);
-            window.history.pushState(null, "", "/" + data.id);
+        $.ajax({
+          type: "POST",
+          url: '/api/run',
+          data: data,
+          success: function(data) { 
+            applyData(data, false);
+            window.history.pushState(null, "", "/" + data.id); 
+            running = false;
           },
-          'json');
+          error: function() { running = false; },
+          dataType: 'json'
+        });
       });
     }
 
@@ -123,7 +135,7 @@
     if (logid.length > 0) {
       $.get('/api/log/' + logid, {},
         function(data) {
-          applyData(data);
+          applyData(data, true);
           selectLang(data.environment.id);
         },
         'json');
