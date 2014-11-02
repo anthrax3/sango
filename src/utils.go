@@ -2,16 +2,16 @@ package sango
 
 import (
 	"bytes"
+	"io"
 	"math/big"
 	"math/rand"
 	"os/exec"
 	"strings"
 	"syscall"
 	"time"
-	"io"
-	"encoding/json"
 
 	"github.com/tv42/base58"
+	"github.com/vmihailenco/msgpack"
 )
 
 const BufferSize = 1024
@@ -66,25 +66,26 @@ func NewCloserReader(b []byte) *CloserReader {
 	}
 }
 
-type JSONFilter struct {
-	Writer io.Writer
-	Tag string
+type Message struct {
+	Tag  string `msgpack:"t"`
+	Data []byte `msgpack:"d"`
 }
 
-func (j *JSONFilter) Write(p []byte) (n int, err error) {
-	v := struct{
-		Tag string `json:"tag"`
-		Data string `json:"data"`
-	}{
-		j.Tag,
-		string(p),
+type MsgpackFilter struct {
+	Writer io.Writer
+	Tag    string
+}
+
+func (j *MsgpackFilter) Write(p []byte) (n int, err error) {
+	v := Message {
+		Tag: j.Tag,
+		Data: p,
 	}
-	data, err := json.Marshal(v)
+	data, err := msgpack.Marshal(v)
 	if err != nil {
 		return 0, err
 	}
 	_, err = j.Writer.Write(data)
-	_, err = j.Writer.Write([]byte("\n"))
 	return len(p), err
 }
 
@@ -116,7 +117,7 @@ func Exec(command string, args []string, stdin string, rstdout, rstderr io.Write
 			}
 			if l > 0 {
 				stdout.Write(buf[:l])
-				if (rstdout != nil) {
+				if rstdout != nil {
 					rstdout.Write(buf[:l])
 				}
 			}
@@ -132,7 +133,7 @@ func Exec(command string, args []string, stdin string, rstdout, rstderr io.Write
 			}
 			if l > 0 {
 				stderr.Write(buf[:l])
-				if (rstderr != nil) {
+				if rstderr != nil {
 					rstderr.Write(buf[:l])
 				}
 			}

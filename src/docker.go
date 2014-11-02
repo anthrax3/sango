@@ -44,18 +44,15 @@ func (i Image) GetVersion() (string, error) {
 	}
 }
 
-func (i Image) Exec(in Input, jsonout io.Writer) (Output, error) {
+func (i Image) Exec(in Input, msgch chan<- Message) (Output, error) {
 	data, err := msgpack.Marshal(in)
 	if err != nil {
 		return Output{}, err
 	}
 	id := GenerateID()
-	var stdout bytes.Buffer
-	stderr := jsonout
-	if stderr == nil {
-		stderr = &bytes.Buffer{}
-	}
-	c := client.NewDockerCli(NewCloserReader(data), &stdout, stderr, "unix", dockerAddr, nil)
+
+	r, w := io.Pipe()
+	c := client.NewDockerCli(NewCloserReader(data), w, nil, "unix", dockerAddr, nil)
 	if c == nil {
 		return Output{}, errors.New("failed to create docker client")
 	}
@@ -63,6 +60,26 @@ func (i Image) Exec(in Input, jsonout io.Writer) (Output, error) {
 	ch := make(chan error, 1)
 	go func() {
 		ch <- c.CmdRun("-i", "--name", id, "--net=none", i.dockerImageName(), "nice", "-n", "20", "./run")
+	}()
+
+	outch := make(chan Message, 1)
+	go func() {
+		d := msgpack.NewDecoder(r)
+		for {
+			var m Message
+			err := d.Decode(&m)
+			if err != nil {
+				log.Print(err)
+				return
+			}
+			if m.Tag == "result" {
+				outch <- m
+			} else {
+				if msgch != nil {
+					msgch <- m
+				}
+			}
+		}
 	}()
 
 	select {
@@ -76,7 +93,8 @@ func (i Image) Exec(in Input, jsonout io.Writer) (Output, error) {
 	if err != nil {
 		out.Status = "Internal error"
 	} else {
-		err = msgpack.Unmarshal(stdout.Bytes(), &out)
+		m := <-outch
+		err = msgpack.Unmarshal(m.Data, &out)
 		if err != nil {
 			return Output{}, err
 		}

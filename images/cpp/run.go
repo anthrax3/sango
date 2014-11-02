@@ -28,8 +28,11 @@ func main() {
 
 	var out sango.Output
 	defer func() {
+		d, _ := msgpack.Marshal(out)
+		m := sango.Message{Tag: "result", Data: d}
 		e := msgpack.NewEncoder(os.Stdout)
-		e.Encode(out)
+		e.Encode(m)
+		os.Stdout.Close()
 	}()
 
 	var in sango.Input
@@ -55,7 +58,9 @@ func main() {
 		args = append(args, k)
 	}
 
-	stdout, stderr, err, code, signal := sango.Exec("g++", args, "", nil, nil, 5*time.Second)
+	msgStdout := sango.MsgpackFilter{Writer: os.Stdout, Tag: "build-stdout"}
+	msgStderr := sango.MsgpackFilter{Writer: os.Stdout, Tag: "build-stderr"}
+	stdout, stderr, err, code, signal := sango.Exec("g++", args, "", &msgStdout, &msgStderr, 5*time.Second)
 	out.BuildStdout = stdout
 	out.BuildStderr = stderr
 	out.Code = code
@@ -69,8 +74,10 @@ func main() {
 		return
 	}
 
+	msgStdout = sango.MsgpackFilter{Writer: os.Stdout, Tag: "run-stdout"}
+	msgStderr = sango.MsgpackFilter{Writer: os.Stdout, Tag: "run-stderr"}
 	start := time.Now()
-	stdout, stderr, err, code, signal = sango.Exec("./main", nil, in.Stdin, nil, nil, 5*time.Second)
+	stdout, stderr, err, code, signal = sango.Exec("./main", nil, in.Stdin, &msgStdout, &msgStderr, 5*time.Second)
 	out.RunningTime = time.Now().Sub(start).Seconds()
 	out.RunStdout = stdout
 	out.RunStderr = stderr
