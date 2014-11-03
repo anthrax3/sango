@@ -107,6 +107,7 @@
                 Pace.stop();
                 sock.close();
                 running = false;
+                window.history.pushState(null, "", "/" + data.data.id);
                 break;
               case "build-stdout":
               case "run-stdout":
