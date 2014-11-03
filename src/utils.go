@@ -14,7 +14,7 @@ import (
 	"github.com/vmihailenco/msgpack"
 )
 
-const LimitedWriterSize = 1024 * 500
+const LimitedWriterSize = 1024 * 10
 
 type Input struct {
 	Files map[string]string `json:"files"`
