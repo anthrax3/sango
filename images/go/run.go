@@ -6,6 +6,8 @@ import (
 	"runtime"
 	"time"
 	"flag"
+	"bytes"
+	"io"
 
 	sango "../../src"
 
@@ -28,10 +30,8 @@ func main() {
 
 	var out sango.Output
 	defer func() {
-		d, _ := msgpack.Marshal(out)
-		m := sango.Message{Tag: "result", Data: string(d)}
 		e := msgpack.NewEncoder(os.Stdout)
-		e.Encode(m)
+		e.Encode(out)
 		os.Stdout.Close()
 	}()
 
@@ -59,11 +59,12 @@ func main() {
 		args = append(args, k)
 	}
 
-	msgStdout := sango.MsgpackFilter{Writer: os.Stdout, Tag: "build-stdout"}
-	msgStderr := sango.MsgpackFilter{Writer: os.Stdout, Tag: "build-stderr"}
-	stdout, stderr, err, code, signal := sango.Exec("go", args, "", &msgStdout, &msgStderr, 5*time.Second)
-	out.BuildStdout = stdout
-	out.BuildStderr = stderr
+	var stdout, stderr bytes.Buffer
+	msgStdout := sango.MsgpackFilter{Writer: os.Stderr, Tag: "build-stdout"}
+	msgStderr := sango.MsgpackFilter{Writer: os.Stderr, Tag: "build-stderr"}
+	err, code, signal := sango.Exec("go", args, "", io.MultiWriter(&msgStdout, &stdout), io.MultiWriter(&msgStderr, &stderr), 5*time.Second)
+	out.BuildStdout = string(stdout.Bytes())
+	out.BuildStderr = string(stderr.Bytes())
 	out.Code = code
 	out.Signal = signal
 	if err != nil {
@@ -75,13 +76,15 @@ func main() {
 		return
 	}
 
-	msgStdout = sango.MsgpackFilter{Writer: os.Stdout, Tag: "run-stdout"}
-	msgStderr = sango.MsgpackFilter{Writer: os.Stdout, Tag: "run-stderr"}
+	stdout.Reset()
+	stderr.Reset()
+	msgStdout = sango.MsgpackFilter{Writer: os.Stderr, Tag: "run-stdout"}
+	msgStderr = sango.MsgpackFilter{Writer: os.Stderr, Tag: "run-stderr"}
 	start := time.Now()
-	stdout, stderr, err, code, signal = sango.Exec("./main", nil, in.Stdin, &msgStdout, &msgStderr, 5*time.Second)
+	err, code, signal = sango.Exec("./main", nil, in.Stdin, io.MultiWriter(&msgStdout, &stdout), io.MultiWriter(&msgStderr, &stderr), 5*time.Second)
 	out.RunningTime = time.Now().Sub(start).Seconds()
-	out.RunStdout = stdout
-	out.RunStderr = stderr
+	out.RunStdout = string(stdout.Bytes())
+	out.RunStderr = string(stderr.Bytes())
 	out.Code = code
 	out.Signal = signal
 	if err == nil {

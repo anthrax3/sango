@@ -51,8 +51,9 @@ func (i Image) Exec(in Input, msgch chan<- *Message) (Output, error) {
 	}
 	id := GenerateID()
 
+	var stdout bytes.Buffer
 	r, w := io.Pipe()
-	c := client.NewDockerCli(NewCloserReader(data), w, nil, "unix", dockerAddr, nil)
+	c := client.NewDockerCli(NewCloserReader(data), &stdout, w, "unix", dockerAddr, nil)
 	if c == nil {
 		return Output{}, errors.New("failed to create docker client")
 	}
@@ -62,7 +63,6 @@ func (i Image) Exec(in Input, msgch chan<- *Message) (Output, error) {
 		ch <- c.CmdRun("-i", "--name", id, "--net=none", i.dockerImageName(), "nice", "-n", "20", "./run")
 	}()
 
-	outch := make(chan Message, 1)
 	go func() {
 		d := msgpack.NewDecoder(r)
 		for {
@@ -74,12 +74,8 @@ func (i Image) Exec(in Input, msgch chan<- *Message) (Output, error) {
 				}
 				return
 			}
-			if m.Tag == "result" {
-				outch <- m
-			} else {
-				if msgch != nil {
-					msgch <- &m
-				}
+			if msgch != nil {
+				msgch <- &m
 			}
 		}
 	}()
@@ -98,8 +94,7 @@ func (i Image) Exec(in Input, msgch chan<- *Message) (Output, error) {
 	if err != nil {
 		out.Status = "Internal error"
 	} else {
-		m := <-outch
-		err = msgpack.Unmarshal([]byte(m.Data), &out)
+		err = msgpack.Unmarshal(stdout.Bytes(), &out)
 		if err != nil {
 			return Output{}, err
 		}

@@ -93,55 +93,11 @@ func (c CloserReader) Close() error {
 	return nil
 }
 
-func Exec(command string, args []string, stdin string, rstdout, rstderr io.Writer, timeout time.Duration) (string, string, error, int, int) {
+func Exec(command string, args []string, stdin string, rstdout, rstderr io.Writer, timeout time.Duration) (error, int, int) {
 	cmd := exec.Command(command, args...)
-	var stdout, stderr bytes.Buffer
 	cmd.Stdin = strings.NewReader(stdin)
-
-	stdoutp, err := cmd.StdoutPipe()
-	if err != nil {
-		return "", "", err, 0, 0
-	}
-
-	stderrp, err := cmd.StderrPipe()
-	if err != nil {
-		return "", "", err, 0, 0
-	}
-
-	// TODO: Use io.Pipe
-	go func() {
-		for {
-			var buf [128]byte
-			l, err := stdoutp.Read(buf[:])
-			if err != nil {
-				return
-			}
-			if l > 0 {
-				stdout.Write(buf[:l])
-				if rstdout != nil {
-					rstdout.Write(buf[:l])
-				}
-			}
-		}
-	}()
-
-	// TODO: Use io.Pipe
-	go func() {
-		for {
-			var buf [128]byte
-			l, err := stderrp.Read(buf[:])
-			if err != nil {
-				return
-			}
-			if l > 0 {
-				stderr.Write(buf[:l])
-				if rstderr != nil {
-					rstderr.Write(buf[:l])
-				}
-			}
-		}
-	}()
-
+	cmd.Stdout = rstdout
+	cmd.Stderr = rstderr
 	cmd.Start()
 
 	ch := make(chan error, 1)
@@ -154,7 +110,7 @@ func Exec(command string, args []string, stdin string, rstdout, rstderr io.Write
 		timech = time.After(timeout)
 	}
 
-	err = nil
+	var err error
 	var timeouterr bool
 	select {
 	case <-timech:
@@ -177,7 +133,7 @@ func Exec(command string, args []string, stdin string, rstdout, rstderr io.Write
 		err = TimeoutError{}
 	}
 
-	return stdout.String(), stderr.String(), err, code, signal
+	return err, code, signal
 }
 
 func GenerateID() string {

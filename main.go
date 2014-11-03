@@ -179,19 +179,22 @@ func (s *Sango) apiRun(r render.Render, res http.ResponseWriter, req *http.Reque
 		res.Header().Set("Content-Type", "application/json")
 		res.WriteHeader(200)
 
-		msgch := make(chan *sango.Message)
-		go func() {
-			for {
-				m := <- msgch
-				if m == nil {
-					return
+		var msgch chan *sango.Message
+		if ereq.Streaming {
+			msgch = make(chan *sango.Message)
+			go func() {
+				for {
+					m := <- msgch
+					if m == nil {
+						return
+					}
+					log.Print(m)
+					data, _ := json.Marshal(m)
+					res.Write(data)
+					res.(http.Flusher).Flush()
 				}
-				log.Print(m)
-				data, _ := json.Marshal(m)
-				res.Write(data)
-				res.(http.Flusher).Flush()
-			}
-		}()
+			}()
+		}
 
 		out, err := img.Exec(ereq.Input, msgch)
 		if err != nil {
