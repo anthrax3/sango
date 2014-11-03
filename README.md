@@ -118,3 +118,57 @@ POST /api/run
    "date":"2014-10-31T05:02:25.886802983-04:00"
 }
 ```
+
+### Websocket /api/run/stream
+Executes the program and returns real-time output.
+
+#### Request
+Websocket /api/run/stream
+
+```json
+{
+   "environment":"php5",
+   "input":{
+      "files":{
+         "main.php":"<?php\n\nfor ($i = 0; $i < 3; $i++) {\n    echo $i;\n    sleep(1);\n}"
+      },
+      "stdin":""
+   }
+}
+```
+
+#### Response
+```json
+{"tag":"run-stdout","data":"0"}
+{"tag":"run-stdout","data":"1"}
+{"tag":"run-stdout","data":"2"}
+{
+   "data":{
+      "id":"75wPeGYfDzd",
+      "environment":{
+         "id":"php5",
+         "name":"PHP",
+         "language":"PHP",
+         "version":"PHP 5.5.9-1ubuntu4.5"
+      },
+      "input":{
+         "files":{
+            "main.php":"\u003c?php\n\nfor ($i = 0; $i \u003c 3; $i++) {\n    echo $i;\n    sleep(1);\n}"
+         },
+         "stdin":""
+      },
+      "output":{
+         "build-stdout":"",
+         "build-stderr":"",
+         "run-stdout":"012",
+         "run-stderr":"",
+         "code":0,
+         "signal":0,
+         "status":"Success",
+         "running-time":3.018414556
+      },
+      "date":"2014-11-03T17:14:09.98496999+09:00"
+   },
+   "tag":"result"
+}
+```
