@@ -2,17 +2,15 @@ package sango
 
 import (
 	"bytes"
-	"errors"
+	"io"
 	"io/ioutil"
 	"log"
 	"os"
 	"os/exec"
 	"path/filepath"
-	"time"
 	"strings"
-	"io"
+	"time"
 
-	"github.com/h2so5/docker/api/client"
 	"github.com/vmihailenco/msgpack"
 	"gopkg.in/yaml.v2"
 )
@@ -32,11 +30,9 @@ func (i Image) dockerImageName() string {
 
 func (i Image) GetVersion() (string, error) {
 	var stdout bytes.Buffer
-	c := client.NewDockerCli(nil, &stdout, nil, "unix", dockerAddr, nil)
-	if c == nil {
-		return "", errors.New("failed to create docker client")
-	}
-	err := c.CmdRun("-i", "--net=none", i.dockerImageName(), "./run", "-v")
+	cmd := exec.Command("docker", "run", "-i", "--net='none'", i.dockerImageName(), "cat", "/sango/version")
+	cmd.Stdout = &stdout
+	err := cmd.Run()
 	if err != nil {
 		return "", err
 	} else {
@@ -53,14 +49,15 @@ func (i Image) Exec(in Input, msgch chan<- *Message) (Output, error) {
 
 	var stdout bytes.Buffer
 	r, w := io.Pipe()
-	c := client.NewDockerCli(NewCloserReader(data), &stdout, w, "unix", dockerAddr, nil)
-	if c == nil {
-		return Output{}, errors.New("failed to create docker client")
-	}
+	cmd := exec.Command("docker", "run", "-i", "--name", id, "--net='none'", i.dockerImageName(), "./run")
+	cmd.Stdin = bytes.NewReader(data)
+	cmd.Stdout = &stdout
+	cmd.Stderr = w
+	cmd.Start()
 
 	ch := make(chan error, 1)
 	go func() {
-		ch <- c.CmdRun("-i", "--name", id, "--net=none", i.dockerImageName(), "nice", "-n", "20", "./run")
+		ch <- cmd.Wait()
 	}()
 
 	go func() {
@@ -82,7 +79,8 @@ func (i Image) Exec(in Input, msgch chan<- *Message) (Output, error) {
 
 	select {
 	case <-time.After(time.Second * 8):
-		c.CmdStop("--time=0", id)
+		stopcmd := exec.Command("docker", "stop", "--time=0", id)
+		stopcmd.Run()
 		err = <-ch
 	case err = <-ch:
 	}
@@ -104,12 +102,8 @@ func (i Image) Exec(in Input, msgch chan<- *Message) (Output, error) {
 }
 
 func (i Image) exists() bool {
-	var stdout bytes.Buffer
-	c := client.NewDockerCli(nil, &stdout, nil, "unix", dockerAddr, nil)
-	if c == nil {
-		return false
-	}
-	err := c.CmdInspect(i.dockerImageName())
+	cmd := exec.Command("docker", "inspect", i.dockerImageName())
+	err := cmd.Run()
 	return err == nil
 }
 
@@ -138,12 +132,10 @@ func buildImage(dir, image string, nocache bool) error {
 		nc += "false"
 	}
 
-	c := client.NewDockerCli(nil, os.Stdout, os.Stderr, "unix", dockerAddr, nil)
-	if c == nil {
-		return errors.New("failed to create docker client")
-	}
-
-	err = c.CmdBuild(nc, "-t", image, ".")
+	cmd = exec.Command("docker", "build", nc, "-t", image, ".")
+	cmd.Stdout = os.Stdout
+	cmd.Stderr = os.Stderr
+	err = cmd.Run()
 	if err != nil {
 		return err
 	}
@@ -163,18 +155,16 @@ func buildImage(dir, image string, nocache bool) error {
 
 func CleanImages() error {
 	var stdout bytes.Buffer
-	c := client.NewDockerCli(nil, &stdout, os.Stderr, "unix", dockerAddr, nil)
-	if c == nil {
-		return errors.New("failed to create docker client")
-	}
-
-	err := c.CmdPs("-a", "-q")
+	cmd := exec.Command("docker", "ps", "-a", "-q")
+	cmd.Stdout = &stdout
+	err := cmd.Run()
 	if err != nil {
 		return err
 	}
 	ps := strings.Split(string(stdout.Bytes()), "\n")
-	if (len(ps) > 1) {
-		err = c.CmdRm(ps[:len(ps)-1]...)
+	if len(ps) > 1 {
+		cmd := exec.Command("docker", append([]string{"rm"}, ps...)...)
+		err = cmd.Run()
 		if err != nil {
 			return err
 		}
