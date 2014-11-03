@@ -16,6 +16,7 @@ import (
 )
 
 const dockerAddr = "/var/run/docker.sock"
+const imagePrefix = "sango/"
 
 type Image struct {
 	ID       string `yaml:"id"        json:"id"`
@@ -25,7 +26,7 @@ type Image struct {
 }
 
 func (i Image) dockerImageName() string {
-	return "sango-" + i.ID
+	return imagePrefix + i.ID
 }
 
 func (i Image) GetVersion() (string, error) {
@@ -60,7 +61,9 @@ func (i Image) Exec(in Input, msgch chan<- *Message) (Output, error) {
 		ch <- cmd.Wait()
 	}()
 
-	var out Output
+	out := Output{
+		MixedOutput: make([]Message, 0),
+	}
 
 	go func() {
 		d := msgpack.NewDecoder(r)
