@@ -33,8 +33,7 @@
 
   <div id="output">
     <pre class="output strong" id="status"></pre>
-    <pre class="output error" id="stderr"></pre>
-    <pre class="output" id="stdout"></pre>
+    <pre class="output" id="msg"></pre>
   </div>
 </div>
 
@@ -61,8 +60,11 @@
         result += "  " + data.output["running-time"].toFixed(4) + " sec";
       }
       $('#status').text(result);
-      $('#stdout').text(data.output["run-stdout"]);
-      $('#stderr').text(data.output["run-stderr"] + data.output["build-stderr"]);
+      var mixed = data.output["mixed-output"];
+      $('#msg').text('');
+      for (var i = 0; i < mixed.length; i++) {
+        $('#msg').text($('#msg').text() + mixed[i].data);
+      }
 
       if (input) {
         for (var f in data.input.files) {
@@ -91,8 +93,7 @@
       });
 
       $('#status').text('Running...');
-      $('#stdout').text('');
-      $('#stderr').text('');
+      $('#msg').text('');
 
       if ("WebSocket" in window) {
         var sock = new WebSocket('ws://' + location.host + '/api/run/stream');
@@ -109,13 +110,8 @@
                   running = false;
                   window.history.pushState(null, "", "/" + data.data.id);
                   break;
-                case "build-stdout":
-                case "run-stdout":
-                  $('#stdout').text($('#stdout').text() + data.data);
-                  break;
-                case "build-stderr":
-                case "run-stderr":
-                  $('#stderr').text($('#stderr').text() + data.data);
+              default:
+                  $('#msg').text($('#msg').text() + data.data);
                   break;
               }
             } catch (e) {
