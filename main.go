@@ -116,7 +116,7 @@ func NewSango(conf Config) *Sango {
 	m.Group("/api", func(r martini.Router) {
 		r.Get("/list", s.apiImageList)
 		r.Post("/run", s.apiRun)
-		r.Post("/run/stream", s.apiRunStreaming)
+		r.Get("/run/stream", s.apiRunStreaming)
 		r.Get("/log/:id", s.apiLog)
 	})
 
@@ -244,7 +244,7 @@ func (s *Sango) apiRunStreaming(res http.ResponseWriter, req *http.Request) {
 	if err != nil {
 		ws.WriteJSON(map[string]string{"error": err.Error()})
 	} else {
-		ws.WriteJSON(eres)
+		ws.WriteJSON(map[string]interface{}{"tag": "result", "data": eres})
 	}
 
 	ws.Close()

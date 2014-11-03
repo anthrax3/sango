@@ -90,20 +90,54 @@
         }
       });
 
-      Pace.track(function() {
-        $.ajax({
-          type: "POST",
-          url: '/api/run',
-          data: data,
-          success: function(data) { 
-            applyData(data, false);
-            window.history.pushState(null, "", "/" + data.id); 
-            running = false;
-          },
-          error: function() { running = false; },
-          dataType: 'json'
+      $('#status').text('');
+      $('#stdout').text('');
+      $('#stderr').text('');
+
+      if ("WebSocket" in window) {
+        var sock = new WebSocket('ws://' + location.host + '/api/run/stream');
+        sock.onopen = function() {
+          sock.send(data);
+          sock.onmessage = function(res) {
+            try {
+              var data = JSON.parse(res.data);
+              switch (data.tag) {
+              case "result":
+                applyData(data.data, false);
+                Pace.stop();
+                sock.close();
+                running = false;
+                break;
+              case "build-stdout":
+              case "run-stdout":
+                $('#stdout').text($('#stdout').text() + data.data);
+                break;
+              case "build-stderr":
+              case "run-stderr":
+                $('#stderr').text($('#stderr').text() + data.data);
+                break;
+              }
+            } catch (e) {
+              console.log(e, res.data);
+            }
+          }
+        };
+      } else {
+        Pace.track(function() {
+          $.ajax({
+            type: "POST",
+            url: '/api/run',
+            data: data,
+            success: function(data) { 
+              applyData(data, false);
+              window.history.pushState(null, "", "/" + data.id); 
+              running = false;
+            },
+            error: function() { running = false; },
+            dataType: 'json'
+          });
         });
-      });
+      }
     }
 
     $('#run-bt').click(run);
