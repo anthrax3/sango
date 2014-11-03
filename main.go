@@ -2,6 +2,7 @@ package main
 
 import (
 	"encoding/json"
+	"errors"
 	"flag"
 	"fmt"
 	"io"
@@ -150,76 +151,60 @@ func (s *Sango) apiImageList(r render.Render) {
 	r.JSON(200, s.imageArray())
 }
 
-func (s *Sango) apiRun(r render.Render, res http.ResponseWriter, req *http.Request) {
-	reader := io.LimitReader(req.Body, s.conf.UploadLimit)
+func (s *Sango) run(req io.Reader, msgch chan<- *sango.Message) (ExecResponse, int, error) {
+	reader := io.LimitReader(req, s.conf.UploadLimit)
 	d := json.NewDecoder(reader)
 	var ereq ExecRequest
 	err := d.Decode(&ereq)
 	if err != nil {
 		log.Print(err)
 		if reader.(*io.LimitedReader).N <= 0 {
-			r.JSON(413, map[string]string{"error": "Too large input"})
+			return ExecResponse{}, 413, errors.New("Too large input")
 		} else {
-			r.JSON(400, map[string]string{"error": "Bad request"})
+			return ExecResponse{}, 400, errors.New("Bad request")
 		}
-		return
 	}
 	if len(ereq.Input.Files) == 0 {
-		r.JSON(400, map[string]string{"error": "No input files"})
-		return
+		return ExecResponse{}, 400, errors.New("No input files")
 	}
 	img, ok := s.images[ereq.Environment]
 	if !ok {
-		r.JSON(501, map[string]string{"error": "No such environment"})
-		return
-	} else {
-		s.reqch <- 0
-		defer func() { <-s.reqch }()
+		return ExecResponse{}, 501, errors.New("No such environment")
+	}
+	s.reqch <- 0
+	defer func() { <-s.reqch }()
 
-		res.Header().Set("Content-Type", "application/json")
-		res.WriteHeader(200)
-
-		var msgch chan *sango.Message
-		if ereq.Streaming {
-			msgch = make(chan *sango.Message)
-			go func() {
-				for {
-					m := <- msgch
-					if m == nil {
-						return
-					}
-					log.Print(m)
-					data, _ := json.Marshal(m)
-					res.Write(data)
-					res.(http.Flusher).Flush()
-				}
-			}()
-		}
-
-		out, err := img.Exec(ereq.Input, msgch)
+	out, err := img.Exec(ereq.Input, msgch)
+	if err != nil {
+		log.Print(err)
+	}
+	eres := ExecResponse{
+		Environment: img,
+		Input:       ereq.Input,
+		Output:      out,
+		Date:        time.Now(),
+	}
+	if !ereq.Volatile {
+		eres.ID = sango.GenerateID()
+		data, err := msgpack.Marshal(eres)
 		if err != nil {
 			log.Print(err)
-		}
-		eres := ExecResponse{
-			Environment: img,
-			Input:       ereq.Input,
-			Output:      out,
-			Date:        time.Now(),
-		}
-		if !ereq.Volatile {
-			eres.ID = sango.GenerateID()
-			data, err := msgpack.Marshal(eres)
+		} else {
+			err := s.db.Put([]byte(eres.ID), data, nil)
 			if err != nil {
 				log.Print(err)
-			} else {
-				err := s.db.Put([]byte(eres.ID), data, nil)
-				if err != nil {
-					log.Print(err)
-				}
 			}
 		}
-		data, _ := json.Marshal(eres)
-		res.Write(data)
+	}
+	return eres, 200, nil
+}
+
+func (s *Sango) apiRun(r render.Render, res http.ResponseWriter, req *http.Request) {
+	eres, code, err := s.run(req.Body, nil)
+	if err != nil {
+		r.JSON(code, map[string]string{"error": err.Error()})
+	} else {
+		r.JSON(code, eres)
 	}
 }
 
@@ -248,7 +233,6 @@ type ExecRequest struct {
 	Environment string      `json:"environment"`
 	Volatile    bool        `json:"volatile"`
 	Input       sango.Input `json:"input"`
-	Streaming   bool        `json:"streaming"`
 }
 
 type ExecResponse struct {

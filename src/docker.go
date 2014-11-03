@@ -30,7 +30,7 @@ func (i Image) dockerImageName() string {
 
 func (i Image) GetVersion() (string, error) {
 	var stdout bytes.Buffer
-	cmd := exec.Command("docker", "run", "-i", "--net='none'", i.dockerImageName(), "cat", "/sango/version")
+	cmd := exec.Command("docker", "run", "-i", "--net=none", i.dockerImageName(), "./run", "-v")
 	cmd.Stdout = &stdout
 	err := cmd.Run()
 	if err != nil {
@@ -49,7 +49,7 @@ func (i Image) Exec(in Input, msgch chan<- *Message) (Output, error) {
 
 	var stdout bytes.Buffer
 	r, w := io.Pipe()
-	cmd := exec.Command("docker", "run", "-i", "--name", id, "--net='none'", i.dockerImageName(), "./run")
+	cmd := exec.Command("docker", "run", "-i", "--name", id, "--net=none", i.dockerImageName(), "./run")
 	cmd.Stdin = bytes.NewReader(data)
 	cmd.Stdout = &stdout
 	cmd.Stderr = w
@@ -163,7 +163,7 @@ func CleanImages() error {
 	}
 	ps := strings.Split(string(stdout.Bytes()), "\n")
 	if len(ps) > 1 {
-		cmd := exec.Command("docker", append([]string{"rm"}, ps...)...)
+		cmd := exec.Command("docker", append([]string{"rm"}, ps[:len(ps)-1]...)...)
 		err = cmd.Run()
 		if err != nil {
 			return err
