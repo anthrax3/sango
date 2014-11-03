@@ -231,7 +231,6 @@ func (s *Sango) apiRunStreaming(res http.ResponseWriter, req *http.Request) {
 				return
 			}
 			ws.WriteJSON(msg)
-			ws.WriteMessage(websocket.TextMessage, []byte("\r\n"))
 		}
 	}()
 
