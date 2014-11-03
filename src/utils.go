@@ -14,7 +14,7 @@ import (
 	"github.com/vmihailenco/msgpack"
 )
 
-const BufferSize = 1024
+const LimitedWriterSize = 1024 * 500
 
 type Input struct {
 	Files map[string]string `json:"files"`
@@ -30,24 +30,6 @@ type Output struct {
 	Signal      int     `json:"signal"`
 	Status      string  `json:"status"`
 	RunningTime float64 `json:"running-time"`
-}
-
-type LimitedBuffer struct {
-	buf []byte
-}
-
-func (b *LimitedBuffer) Write(p []byte) (n int, err error) {
-	if len(b.buf)+len(p) > BufferSize {
-		l := BufferSize - len(b.buf)
-		b.buf = append(b.buf, p[:l]...)
-		return l, bytes.ErrTooLarge
-	}
-	b.buf = append(b.buf, p...)
-	return len(p), nil
-}
-
-func (b LimitedBuffer) String() string {
-	return string(b.buf)
 }
 
 type TimeoutError struct{}
@@ -77,8 +59,8 @@ type MsgpackFilter struct {
 }
 
 func (j *MsgpackFilter) Write(p []byte) (n int, err error) {
-	v := Message {
-		Tag: j.Tag,
+	v := Message{
+		Tag:  j.Tag,
 		Data: string(p),
 	}
 	data, err := msgpack.Marshal(v)
@@ -96,8 +78,8 @@ func (c CloserReader) Close() error {
 func Exec(command string, args []string, stdin string, rstdout, rstderr io.Writer, timeout time.Duration) (error, int, int) {
 	cmd := exec.Command(command, args...)
 	cmd.Stdin = strings.NewReader(stdin)
-	cmd.Stdout = rstdout
-	cmd.Stderr = rstderr
+	cmd.Stdout = &LimitedWriter{W: rstdout, N: LimitedWriterSize}
+	cmd.Stderr = &LimitedWriter{W: rstderr, N: LimitedWriterSize}
 	cmd.Start()
 
 	ch := make(chan error, 1)
@@ -138,4 +120,21 @@ func Exec(command string, args []string, stdin string, rstdout, rstderr io.Write
 
 func GenerateID() string {
 	return string(base58.EncodeBig(nil, big.NewInt(0).Add(big.NewInt(0xc0ffee), big.NewInt(rand.Int63()))))
+}
+
+type LimitedWriter struct {
+	W io.Writer
+	N int64
+}
+
+func (l *LimitedWriter) Write(p []byte) (n int, err error) {
+	if l.N <= 0 {
+		return 0, io.ErrClosedPipe
+	}
+	if int64(len(p)) > l.N {
+		p = p[0:l.N]
+	}
+	n, err = l.W.Write(p)
+	l.N -= int64(n)
+	return
 }
