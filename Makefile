@@ -1,6 +1,6 @@
 all: main image
 
-main:
+main: main.go src/*.go
 	go build -o main main.go
 
 image: main

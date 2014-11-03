@@ -26,6 +26,7 @@ type Output struct {
 	BuildStderr string  `json:"build-stderr"`
 	RunStdout   string  `json:"run-stdout"`
 	RunStderr   string  `json:"run-stderr"`
+	MixedOutput []Message  `json:"mixed-output"`
 	Code        int     `json:"code"`
 	Signal      int     `json:"signal"`
 	Status      string  `json:"status"`

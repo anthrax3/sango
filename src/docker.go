@@ -60,6 +60,8 @@ func (i Image) Exec(in Input, msgch chan<- *Message) (Output, error) {
 		ch <- cmd.Wait()
 	}()
 
+	var out Output
+
 	go func() {
 		d := msgpack.NewDecoder(r)
 		for {
@@ -74,6 +76,7 @@ func (i Image) Exec(in Input, msgch chan<- *Message) (Output, error) {
 			if msgch != nil {
 				msgch <- &m
 			}
+			out.MixedOutput = append(out.MixedOutput, m)
 		}
 	}()
 
@@ -88,7 +91,6 @@ func (i Image) Exec(in Input, msgch chan<- *Message) (Output, error) {
 	r.Close()
 	w.Close()
 
-	var out Output
 	if err != nil {
 		out.Status = "Internal error"
 	} else {
