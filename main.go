@@ -127,7 +127,7 @@ func NewSango(conf Config) *Sango {
 }
 
 func (s *Sango) index(r render.Render) {
-	r.HTML(200, "index", map[string]interface{}{"images": s.imageArray()})
+	r.HTML(200, "index", map[string]interface{}{"ga": s.conf.GoogleAnalytics, "images": s.imageArray()})
 }
 
 func (s *Sango) log(r render.Render, params martini.Params) {
@@ -137,7 +137,7 @@ func (s *Sango) log(r render.Render, params martini.Params) {
 		r.Redirect("/")
 		return
 	}
-	r.HTML(200, "index", map[string]interface{}{"logid": id, "images": s.imageArray()})
+	r.HTML(200, "index", map[string]interface{}{"ga": s.conf.GoogleAnalytics, "logid": id, "images": s.imageArray()})
 }
 
 func (s *Sango) imageArray() []sango.Image {
