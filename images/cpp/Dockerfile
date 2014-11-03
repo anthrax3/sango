@@ -1,4 +1,4 @@
-FROM h2so5/sango-base
+FROM sango/base
 
 RUN mkdir /sango
 RUN gcc -v 2>&1 | tail -n 1 | sed -r "s/\(.+\)//g" | sed -r "s/(^ +| +$|)//g" | tr -d '\n' > /sango/version

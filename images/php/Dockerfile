@@ -1,4 +1,4 @@
-FROM h2so5/sango-base
+FROM sango/base
 
 RUN mkdir /sango
 RUN echo -n `php -v | head -n 1 | sed -r "s/ with .+$//g" | sed -r "s/\(.+\)//g" | tr -d '\n'` > /sango/version

@@ -1,4 +1,4 @@
-FROM h2so5/sango-base
+FROM sango/base
 
 RUN apt-get update
 RUN apt-get install -y bison
