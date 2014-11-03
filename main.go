@@ -18,6 +18,7 @@ import (
 
 	"bitbucket.org/kardianos/osext"
 	"github.com/go-martini/martini"
+	"github.com/gorilla/websocket"
 	"github.com/martini-contrib/gzip"
 	"github.com/martini-contrib/render"
 	"github.com/syndtr/goleveldb/leveldb"
@@ -115,6 +116,7 @@ func NewSango(conf Config) *Sango {
 	m.Group("/api", func(r martini.Router) {
 		r.Get("/list", s.apiImageList)
 		r.Post("/run", s.apiRun)
+		r.Post("/run/stream", s.apiRunStreaming)
 		r.Get("/log/:id", s.apiLog)
 	})
 
@@ -206,6 +208,46 @@ func (s *Sango) apiRun(r render.Render, res http.ResponseWriter, req *http.Reque
 	} else {
 		r.JSON(code, eres)
 	}
+}
+
+func (s *Sango) apiRunStreaming(res http.ResponseWriter, req *http.Request) {
+	ws, err := websocket.Upgrade(res, req, nil, 1024, 1024)
+	if err != nil {
+		log.Print(err)
+		return
+	}
+
+	_, r, err := ws.NextReader()
+	if err != nil {
+		log.Print(err)
+		return
+	}
+
+	msgch := make(chan *sango.Message)
+	go func() {
+		for {
+			msg := <-msgch
+			if msg == nil {
+				return
+			}
+			ws.WriteJSON(msg)
+			ws.WriteMessage(websocket.TextMessage, []byte("\r\n"))
+		}
+	}()
+
+	eres, _, err := s.run(r, msgch)
+	if err != nil {
+		log.Print(err)
+		return
+	}
+
+	if err != nil {
+		ws.WriteJSON(map[string]string{"error": err.Error()})
+	} else {
+		ws.WriteJSON(eres)
+	}
+
+	ws.Close()
 }
 
 func (s *Sango) apiLog(r render.Render, params martini.Params) {
