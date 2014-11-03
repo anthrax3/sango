@@ -90,7 +90,7 @@
         }
       });
 
-      $('#status').text('');
+      $('#status').text('Running...');
       $('#stdout').text('');
       $('#stderr').text('');
 
@@ -102,21 +102,21 @@
             try {
               var data = JSON.parse(res.data);
               switch (data.tag) {
-              case "result":
-                applyData(data.data, false);
-                Pace.stop();
-                sock.close();
-                running = false;
-                window.history.pushState(null, "", "/" + data.data.id);
-                break;
-              case "build-stdout":
-              case "run-stdout":
-                $('#stdout').text($('#stdout').text() + data.data);
-                break;
-              case "build-stderr":
-              case "run-stderr":
-                $('#stderr').text($('#stderr').text() + data.data);
-                break;
+                case "result":
+                  applyData(data.data, false);
+                  Pace.stop();
+                  sock.close();
+                  running = false;
+                  window.history.pushState(null, "", "/" + data.data.id);
+                  break;
+                case "build-stdout":
+                case "run-stdout":
+                  $('#stdout').text($('#stdout').text() + data.data);
+                  break;
+                case "build-stderr":
+                case "run-stderr":
+                  $('#stderr').text($('#stderr').text() + data.data);
+                  break;
               }
             } catch (e) {
               console.log(e, res.data);
@@ -129,12 +129,14 @@
             type: "POST",
             url: '/api/run',
             data: data,
-            success: function(data) { 
+            success: function(data) {
               applyData(data, false);
-              window.history.pushState(null, "", "/" + data.id); 
+              window.history.pushState(null, "", "/" + data.id);
               running = false;
             },
-            error: function() { running = false; },
+            error: function() {
+              running = false;
+            },
             dataType: 'json'
           });
         });
