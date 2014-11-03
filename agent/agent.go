@@ -1,58 +1,16 @@
-package sango
+package agent
 
 import (
-	"bytes"
 	"io"
-	"math/big"
-	"math/rand"
 	"os/exec"
 	"strings"
 	"syscall"
 	"time"
 
-	"github.com/tv42/base58"
 	"github.com/vmihailenco/msgpack"
 )
 
 const LimitedWriterSize = 1024 * 10
-
-type Input struct {
-	Files map[string]string `json:"files"`
-	Stdin string            `json:"stdin"`
-}
-
-type Output struct {
-	BuildStdout string  `json:"build-stdout"`
-	BuildStderr string  `json:"build-stderr"`
-	RunStdout   string  `json:"run-stdout"`
-	RunStderr   string  `json:"run-stderr"`
-	MixedOutput []Message  `json:"mixed-output"`
-	Code        int     `json:"code"`
-	Signal      int     `json:"signal"`
-	Status      string  `json:"status"`
-	RunningTime float64 `json:"running-time"`
-}
-
-type TimeoutError struct{}
-
-func (e TimeoutError) Error() string {
-	return "timeout"
-}
-
-type CloserReader struct {
-	*bytes.Reader
-}
-
-func NewCloserReader(b []byte) *CloserReader {
-	return &CloserReader{
-		Reader: bytes.NewReader(b),
-	}
-}
-
-type Message struct {
-	Tag  string `msgpack:"t" json:"tag"`
-	Data string `msgpack:"d" json:"data"`
-}
 
 type MsgpackFilter struct {
 	Writer io.Writer
@@ -72,8 +30,9 @@ func (j *MsgpackFilter) Write(p []byte) (n int, err error) {
 	return len(p), err
 }
 
-func (c CloserReader) Close() error {
-	return nil
+type Message struct {
+	Tag  string `msgpack:"t" json:"tag"`
+	Data string `msgpack:"d" json:"data"`
 }
 
 func Exec(command string, args []string, stdin string, rstdout, rstderr io.Writer, timeout time.Duration) (error, int, int) {
@@ -119,10 +78,6 @@ func Exec(command string, args []string, stdin string, rstdout, rstderr io.Write
 	return err, code, signal
 }
 
-func GenerateID() string {
-	return string(base58.EncodeBig(nil, big.NewInt(0).Add(big.NewInt(0xc0ffee), big.NewInt(rand.Int63()))))
-}
-
 type LimitedWriter struct {
 	W io.Writer
 	N int64
@@ -138,4 +93,27 @@ func (l *LimitedWriter) Write(p []byte) (n int, err error) {
 	n, err = l.W.Write(p)
 	l.N -= int64(n)
 	return
+}
+
+type Input struct {
+	Files map[string]string `json:"files"`
+	Stdin string            `json:"stdin"`
+}
+
+type Output struct {
+	BuildStdout string    `json:"build-stdout"`
+	BuildStderr string    `json:"build-stderr"`
+	RunStdout   string    `json:"run-stdout"`
+	RunStderr   string    `json:"run-stderr"`
+	MixedOutput []Message `json:"mixed-output"`
+	Code        int       `json:"code"`
+	Signal      int       `json:"signal"`
+	Status      string    `json:"status"`
+	RunningTime float64   `json:"running-time"`
+}
+
+type TimeoutError struct{}
+
+func (e TimeoutError) Error() string {
+	return "timeout"
 }

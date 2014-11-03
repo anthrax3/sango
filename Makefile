@@ -1,7 +1,7 @@
 all: main image
 
-main: main.go src/*.go
-	go build -o main main.go
+main: *.go
+	go build -o main *.go
 
 image: main
 	./main -norun

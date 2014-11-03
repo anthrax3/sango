@@ -25,7 +25,7 @@ import (
 	"github.com/vmihailenco/msgpack"
 	"gopkg.in/yaml.v2"
 
-	sango "./src"
+	"./agent"
 )
 
 var sangoPath string
@@ -39,7 +39,7 @@ type Sango struct {
 	*martini.ClassicMartini
 	conf   Config
 	db     *leveldb.DB
-	images sango.ImageList
+	images ImageList
 	reqch  chan int
 }
 
@@ -93,8 +93,8 @@ func NewSango(conf Config) *Sango {
 		log.Fatal(err)
 	}
 
-	sango.CleanImages()
-	images := sango.MakeImageList(conf.ImageDir, *forceBuild, *noCache)
+	CleanImages()
+	images := MakeImageList(conf.ImageDir, *forceBuild, *noCache)
 
 	s := &Sango{
 		ClassicMartini: m,
@@ -109,7 +109,7 @@ func NewSango(conf Config) *Sango {
 		for {
 			<-ch
 			log.Print("cleaning images...")
-			sango.CleanImages()
+			CleanImages()
 		}
 	}()
 
@@ -140,8 +140,8 @@ func (s *Sango) log(r render.Render, params martini.Params) {
 	r.HTML(200, "index", map[string]interface{}{"ga": s.conf.GoogleAnalytics, "logid": id, "images": s.imageArray()})
 }
 
-func (s *Sango) imageArray() []sango.Image {
-	l := make(sango.ImageArray, 0, len(s.images))
+func (s *Sango) imageArray() []Image {
+	l := make(ImageArray, 0, len(s.images))
 	for _, v := range s.images {
 		l = append(l, v)
 	}
@@ -153,7 +153,7 @@ func (s *Sango) apiImageList(r render.Render) {
 	r.JSON(200, s.imageArray())
 }
 
-func (s *Sango) run(req io.Reader, msgch chan<- *sango.Message) (ExecResponse, int, error) {
+func (s *Sango) run(req io.Reader, msgch chan<- *agent.Message) (ExecResponse, int, error) {
 	reader := io.LimitReader(req, s.conf.UploadLimit)
 	d := json.NewDecoder(reader)
 	var ereq ExecRequest
@@ -187,7 +187,7 @@ func (s *Sango) run(req io.Reader, msgch chan<- *sango.Message) (ExecResponse, i
 		Date:        time.Now(),
 	}
 	if !ereq.Volatile {
-		eres.ID = sango.GenerateID()
+		eres.ID = GenerateID()
 		data, err := msgpack.Marshal(eres)
 		if err != nil {
 			log.Print(err)
@@ -224,7 +224,7 @@ func (s *Sango) apiRunStreaming(res http.ResponseWriter, req *http.Request) {
 		return
 	}
 
-	msgch := make(chan *sango.Message)
+	msgch := make(chan *agent.Message)
 	go func() {
 		for {
 			msg := <-msgch
@@ -270,16 +270,16 @@ func (s *Sango) Close() {
 }
 
 type ExecRequest struct {
-	Environment string      `json:"environment"`
-	Volatile    bool        `json:"volatile"`
-	Input       sango.Input `json:"input"`
+	Environment string `json:"environment"`
+	Volatile    bool   `json:"volatile"`
+	Input       agent.Input  `json:"input"`
 }
 
 type ExecResponse struct {
 	ID          string       `json:"id,omitempty"`
-	Environment sango.Image  `json:"environment"`
-	Input       sango.Input  `json:"input"`
-	Output      sango.Output `json:"output"`
+	Environment Image        `json:"environment"`
+	Input       agent.Input  `json:"input"`
+	Output      agent.Output `json:"output"`
 	Date        time.Time    `json:"date"`
 }
 
@@ -307,6 +307,6 @@ func main() {
 		log.Printf("listening on :%d\n", conf.Port)
 		log.Fatal(http.ListenAndServe(fmt.Sprintf(":%d", conf.Port), s))
 	} else {
-		sango.MakeImageList(conf.ImageDir, *forceBuild, *noCache)
+		MakeImageList(conf.ImageDir, *forceBuild, *noCache)
 	}
 }
