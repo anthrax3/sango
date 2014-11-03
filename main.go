@@ -216,6 +216,7 @@ func (s *Sango) apiRunStreaming(res http.ResponseWriter, req *http.Request) {
 		log.Print(err)
 		return
 	}
+	defer ws.Close()
 
 	_, r, err := ws.NextReader()
 	if err != nil {
@@ -245,8 +246,6 @@ func (s *Sango) apiRunStreaming(res http.ResponseWriter, req *http.Request) {
 	} else {
 		ws.WriteJSON(map[string]interface{}{"tag": "result", "data": eres})
 	}
-
-	ws.Close()
 }
 
 func (s *Sango) apiLog(r render.Render, params martini.Params) {
