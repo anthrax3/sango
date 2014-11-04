@@ -30,6 +30,7 @@ type Image struct {
 	Options  map[string]agent.Option `yaml:"options"  json:"options,omitempty"`
 	Version  string                  `yaml:"-"        json:"version"`
 	Template string                  `yaml:"-"        json:"-"`
+	AceMode  string                  `yaml:"acemode"  json:"-"`
 }
 
 func (i Image) dockerImageName() string {

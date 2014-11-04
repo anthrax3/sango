@@ -2,20 +2,13 @@
 </script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/ace/1.1.3/ace.js" type="text/javascript" charset="utf-8"></script>
 
-<script src="https://cdnjs.cloudflare.com/ajax/libs/ace/1.1.3/mode-ruby.js" type="text/javascript" charset="utf-8"></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/ace/1.1.3/mode-c_cpp.js" type="text/javascript" charset="utf-8"></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/ace/1.1.3/mode-golang.js" type="text/javascript" charset="utf-8"></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/ace/1.1.3/mode-php.js" type="text/javascript" charset="utf-8"></script>
-
-<script src="langs.js" type="text/javascript" charset="utf-8"></script>
-
 <div id="nav">
   <h3 style="color: #ff4040"><a href="/" style="text-decoration: none"><img width="24" height="24" src="sango.svg">Sangobox</a></h3> Online compiler (<a href="https://github.com/h2so5/sango">github</a>)
   <h3>Language</h3>
   <input id="langsearch" type="text" placeholder="Search...">
   <ul id="lang">
     {{ range .images }}
-    <li data-id="{{ .ID }}" data-lang="{{ .Language }}" data-name="{{ .Name }}" data-ver="{{ .Version }}"><a href="javascript:void(0)">{{ .Name }}<p>{{ .Version }}</p></a>
+    <li data-id="{{ .ID }}" data-lang="{{ .Language }}" data-name="{{ .Name }}" data-ver="{{ .Version }}" data-mode="{{ .AceMode }}"><a href="javascript:void(0)">{{ .Name }}<p>{{ .Version }}</p></a>
     </li>
     {{ end }}
   </ul>
@@ -273,23 +266,27 @@
         $('.options[data-id=' + id + ']').show();
 
         var lang = $li.attr('data-lang');
-        if (lang in lang_settings) {
-          localStorage["last_id"] = id;
-          code_editor.getSession().setMode(lang_settings[lang]["ace-mode"]);
-          code_editor.renderer.updateFull();
-          current_id = id;
-          current_lang = lang;
-          if (!edited) {
-            $.get('/template/' + id, {},
-              function(data) {
-                var e = edited;
-                code_editor.getSession().setValue(data);
-                code_editor.find('@cursor@');
-                code_editor.replace('');
-                code_editor.focus();
-                edited = e;
-              });
-          }
+        var mode = $li.attr('data-mode');
+        localStorage["last_id"] = id;
+
+        $.getScript('https://cdnjs.cloudflare.com/ajax/libs/ace/1.1.3/mode-' + mode + '.js',
+          function(){
+            code_editor.getSession().setMode('ace/mode/' + mode);
+            code_editor.renderer.updateFull();
+        });
+
+        current_id = id;
+        current_lang = lang;
+        if (!edited) {
+          $.get('/template/' + id, {},
+            function(data) {
+              var e = edited;
+              code_editor.getSession().setValue(data);
+              code_editor.find('@cursor@');
+              code_editor.replace('');
+              code_editor.focus();
+              edited = e;
+            });
         }
         return true;
       } else {

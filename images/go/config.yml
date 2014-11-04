@@ -2,6 +2,8 @@ id: go-latest
 name: Go
 language: Go
 
+acemode: golang
+
 options:
   race:
     title: Race Detector

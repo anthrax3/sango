@@ -2,6 +2,8 @@ id: cpp
 name: C++
 language: C++
 
+acemode: c_cpp
+
 options:
   optim:
     title: Optimization
