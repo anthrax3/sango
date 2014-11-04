@@ -13,3 +13,12 @@ options:
       - -O2
       - -O3
       - -Os
+  std:
+    title: Standard
+    type: list
+    default: -std=c++11
+    candidates:
+      - -std=c++03
+      - -std=gnu++03
+      - -std=c++11
+      - -std=gnu++11

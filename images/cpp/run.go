@@ -28,6 +28,19 @@ func build(files []string, in agent.Input, out *agent.Output) (string, []string)
 		}
 	}
 
+	if optim, ok := in.Options["std"].(string); ok {
+		switch optim {
+			case "-std=c++03":
+				args = append(args, optim)
+			case "-std=gnu++03":
+				args = append(args, optim)
+			case "-std=c++11":
+				args = append(args, optim)
+			case "-std=gnu++11":
+				args = append(args, optim)
+		}
+	}
+
 	return "g++", append(args, files...)
 }
 

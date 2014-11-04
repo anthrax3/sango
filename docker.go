@@ -58,6 +58,12 @@ func (i Image) Exec(in agent.Input, msgch chan<- *agent.Message) (agent.Output, 
 	}
 	id := GenerateID()
 
+	for k, v := range i.Options {
+		if _, ok := in.Options[k]; !ok {
+			in.Options[k] = v.Default
+		}
+	}
+
 	var stdout bytes.Buffer
 	r, w := io.Pipe()
 	cmd := exec.Command("docker", "run", "-i", "--name", id, "--net=none", i.dockerImageName(), "./run")
