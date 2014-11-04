@@ -85,6 +85,7 @@ func (a *agent) build() error {
 	}
 
 	cmd, args := a.buildCmd(a.files, a.in, &a.out)
+	a.out.BuildCommand = strings.Join(append([]string{cmd}, args...), " ")
 	var stdout, stderr bytes.Buffer
 	msgStdout := MsgpackFilter{Writer: os.Stderr, Tag: "build-stdout"}
 	msgStderr := MsgpackFilter{Writer: os.Stderr, Tag: "build-stderr"}
@@ -110,6 +111,7 @@ func (a *agent) run() error {
 	}
 
 	cmd, args := a.runCmd(a.files, a.in, &a.out)
+	a.out.RunCommand = strings.Join(append([]string{cmd}, args...), " ")
 	var stdout, stderr bytes.Buffer
 	msgStdout := MsgpackFilter{Writer: os.Stderr, Tag: "run-stdout"}
 	msgStderr := MsgpackFilter{Writer: os.Stderr, Tag: "run-stderr"}

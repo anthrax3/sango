@@ -3,11 +3,11 @@ package main
 import "../../agent"
 
 func run(files []string, in agent.Input, out *agent.Output) (string, []string) {
-	return "/mruby/build/host/bin/mruby", files
+	return "mruby", files
 }
 
 func version() string {
-	v, _ := agent.System("/mruby/build/host/bin", "./mruby", "--version")
+	v, _ := agent.System(".", "mruby", "--version")
 	g, _ := agent.System("/mruby", "git", "rev-parse", "HEAD")
 	return v[:len(v)-1] + g[:8]
 }
