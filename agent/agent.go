@@ -103,8 +103,8 @@ type Option struct {
 }
 
 type Input struct {
-	Files   map[string]string `json:"files"`
-	Stdin   string            `json:"stdin"`
+	Files   map[string]string      `json:"files"`
+	Stdin   string                 `json:"stdin"`
 	Options map[string]interface{} `json:"options,omitempty"`
 }
 
