@@ -1,3 +1,9 @@
 id: go-latest
 name: Go
 language: Go
+
+options:
+  race:
+    title: Race Detector
+    type: bool
+    default: false

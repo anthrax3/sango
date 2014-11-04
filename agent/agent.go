@@ -95,9 +95,17 @@ func (l *LimitedWriter) Write(p []byte) (n int, err error) {
 	return
 }
 
+type Option struct {
+	Title      string        `yaml:"title"      json:"title"`
+	Type       string        `yaml:"type"       json:"type"`
+	Default    interface{}   `yaml:"default"    json:"default"`
+	Candidates []interface{} `yaml:"candidates" json:"candidates,omitempty"`
+}
+
 type Input struct {
-	Files map[string]string `json:"files"`
-	Stdin string            `json:"stdin"`
+	Files   map[string]string `json:"files"`
+	Stdin   string            `json:"stdin"`
+	Options map[string]interface{} `json:"options,omitempty"`
 }
 
 type Output struct {

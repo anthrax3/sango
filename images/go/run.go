@@ -12,6 +12,15 @@ func build(files []string, in agent.Input, out *agent.Output) (string, []string)
 		"-o",
 		"main",
 	}
+	
+	if i, ok := in.Options["race"]; ok {
+		if race, ok := i.(bool); ok {
+			if race {
+				args = append(args, "-race")
+			}
+		}
+	}
+
 	return "go", append(args, files...)
 }
 

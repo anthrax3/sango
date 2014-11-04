@@ -30,6 +30,21 @@
 
   <div id="command">
     <button id="run-bt">Run (Ctrl+Enter)</button>
+    {{ range .images }}
+      <span class="options" data-id="{{ .ID }}">
+        {{ $options := .Options }}
+        {{ range $key, $value := $options }}
+          <label for="{{$key}}">{{ $value.Title }}</label>
+          {{ if eq .Type "bool" }}
+            {{ $checked := "" }}
+            {{if eq (html .Default) "true"}}
+              {{ $checked := "checked" }}
+            {{end}}
+              <input type="checkbox" name="{{$key}}" {{$checked}}>
+          {{ end }}
+        {{ end }}
+      </span>
+    {{ end }}
   </div>
 
   <div id="output">
@@ -76,6 +91,20 @@
         }
         stdin_editor.getSession().setValue(data.input.stdin);
       }
+
+      $options = $('.options[data-id=' + data.environment.id + ']');
+      var options = data.input.options;
+
+      if (options) {
+        for (var key in options) {
+          var o = options[key];
+          $options.find('[name=' + key + ']').each(function(){
+            if ($(this).attr('type') == "checkbox") {
+              $(this).prop('checked', o);
+            }
+          })
+        }
+      }
     }
 
     function share(id) {
@@ -93,6 +122,12 @@
         return;
       }
 
+      var options = {};
+      $options = $('.options[data-id=' + current_id + ']');
+      $options.find('input[type=checkbox]').each(function(){
+        options[$(this).attr("name")] = $(this).prop('checked');
+      });
+
       running = true;
       var files = {};
       files["main." + lang_settings[current_lang].extension] = code;
@@ -100,7 +135,8 @@
         "environment": current_id,
         "input": {
           "files": files,
-          "stdin": stdin
+          "stdin": stdin,
+          "options": options
         }
       });
 
@@ -215,8 +251,13 @@
         if (sort) {
           $('#lang').prepend($li.detach());
         }
+
         $('#lang li').removeClass('selected');
         $li.addClass('selected');
+
+        $('.options').hide();
+        $('.options[data-id=' + id + ']').show();
+
         var lang = $li.attr('data-lang');
         if (lang in lang_settings) {
           localStorage["last_id"] = id;
