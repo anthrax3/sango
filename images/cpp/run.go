@@ -12,6 +12,22 @@ func build(files []string, in agent.Input, out *agent.Output) (string, []string)
 		"-o",
 		"main",
 	}
+
+	if optim, ok := in.Options["optim"].(string); ok {
+		switch optim {
+			case "-O0":
+				args = append(args, optim)
+			case "-O1":
+				args = append(args, optim)
+			case "-O2":
+				args = append(args, optim)
+			case "-O3":
+				args = append(args, optim)
+			case "-Os":
+				args = append(args, optim)
+		}
+	}
+
 	return "g++", append(args, files...)
 }
 

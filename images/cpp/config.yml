@@ -1,3 +1,15 @@
 id: cpp
 name: C++
 language: C++
+
+options:
+  optim:
+    title: Optimization
+    type: list
+    default: -O0
+    candidates:
+      - -O0
+      - -O1
+      - -O2
+      - -O3
+      - -Os

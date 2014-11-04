@@ -41,6 +41,12 @@
               {{ $checked := "checked" }}
             {{end}}
               <input type="checkbox" name="{{$key}}" {{$checked}}>
+          {{ else if eq .Type "list" }}
+            <select name="{{$key}}">
+              {{ range .Candidates }}
+                <option val="{{.}}">{{.}}</option>
+              {{ end }}
+            </select>
           {{ end }}
         {{ end }}
       </span>
@@ -99,8 +105,11 @@
         for (var key in options) {
           var o = options[key];
           $options.find('[name=' + key + ']').each(function(){
-            if ($(this).attr('type') == "checkbox") {
+            var type = $(this).attr('type');
+            if (type == "checkbox") {
               $(this).prop('checked', o);
+            } else if ($(this)[0].tagName == 'SELECT') {
+              $(this).val(o);
             }
           })
         }
@@ -126,6 +135,9 @@
       $options = $('.options[data-id=' + current_id + ']');
       $options.find('input[type=checkbox]').each(function(){
         options[$(this).attr("name")] = $(this).prop('checked');
+      });
+      $options.find('select').each(function(){
+        options[$(this).attr("name")] = $(this).val();
       });
 
       running = true;
