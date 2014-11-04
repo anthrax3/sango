@@ -67,7 +67,10 @@ func Run(buildCmd, runCmd CmdHandler, verCmd VersionHandler) {
 	a.close()
 }
 
-func QuickExec(command string, args ...string) (string, string) {
+func System(wdir, command string, args ...string) (string, string) {
+	path, _ := os.Getwd()
+	os.Chdir(wdir)
+	defer os.Chdir(path)
 	var stdout, stderr bytes.Buffer
 	cmd := exec.Command(command, args...)
 	cmd.Stdout = &stdout

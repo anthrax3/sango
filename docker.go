@@ -209,37 +209,50 @@ func MakeImageList(langpath string, build, nocache bool) ImageList {
 		return nil
 	}
 
+	w, err := os.Getwd()
+	if err != nil {
+		log.Print(err)
+		return nil
+	}
+
 	for _, f := range files {
+		err = os.Chdir(w)
+		if err != nil {
+			log.Print(w)
+			continue
+		}
 		d := filepath.Join(langpath, f.Name())
 		c := filepath.Join(d, "config.yml")
 		data, err := ioutil.ReadFile(c)
-		if err == nil {
-			var img Image
-			err := yaml.Unmarshal(data, &img)
-			if err != nil {
-				log.Print(c, err)
+		if err != nil {
+			log.Print(w)
+			continue
+		}
+		var img Image
+		err = yaml.Unmarshal(data, &img)
+		if err != nil {
+			log.Print(c, err)
+		} else {
+			if build {
+				log.Printf("Found config: %s [%s]", img.ID, img.dockerImageName())
+				log.Printf("Building image...")
+				err = buildImage(d, img.dockerImageName(), nocache)
 			} else {
-				if build {
-					log.Printf("Found config: %s [%s]", img.ID, img.dockerImageName())
-					log.Printf("Building image...")
-					err = buildImage(d, img.dockerImageName(), nocache)
-				} else {
-					if !img.exists() {
-						log.Printf("Image not found: %s", img.dockerImageName())
-						continue
-					}
+				if !img.exists() {
+					log.Printf("Image not found: %s", img.dockerImageName())
+					continue
 				}
+			}
+			if err != nil {
+				log.Printf("Filed to build image: %v", err)
+			} else {
+				ver, err := img.GetVersion()
 				if err != nil {
-					log.Printf("Filed to build image: %v", err)
+					log.Printf("Filed to get version: %v", err)
 				} else {
-					ver, err := img.GetVersion()
-					if err != nil {
-						log.Printf("Filed to get version: %v", err)
-					} else {
-						img.Version = ver
-						log.Printf("Get version: %s (%s)", img.Language, img.Version)
-						l[img.ID] = img
-					}
+					img.Version = ver
+					log.Printf("Get version: %s (%s)", img.Language, img.Version)
+					l[img.ID] = img
 				}
 			}
 		}
