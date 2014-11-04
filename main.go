@@ -122,6 +122,7 @@ func NewSango(conf Config) *Sango {
 
 	m.Get("/", s.index)
 	m.Get("/:id", s.log)
+	m.Get("/template/:env", s.template)
 
 	return s
 }
@@ -270,6 +271,18 @@ func (s *Sango) apiLog(r render.Render, params martini.Params) {
 		return
 	}
 	r.JSON(200, res)
+}
+
+func (s *Sango) template(res http.ResponseWriter, params martini.Params) {
+	env := params["env"]
+	img, ok := s.images[env]
+	res.Header()["Content-Type"] = []string{"text/plain"}
+	if !ok {
+		res.WriteHeader(404)
+		return
+	}
+	res.WriteHeader(200)
+	res.Write([]byte(img.Template))
 }
 
 func (s *Sango) Close() {

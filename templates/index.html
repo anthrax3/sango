@@ -280,10 +280,13 @@
           current_id = id;
           current_lang = lang;
           if (!edited) {
-            $.get('/template/' + lang + '.txt', {},
+            $.get('/template/' + id, {},
               function(data) {
                 var e = edited;
                 code_editor.getSession().setValue(data);
+                code_editor.find('@cursor@');
+                code_editor.replace('');
+                code_editor.focus();
                 edited = e;
               });
           }

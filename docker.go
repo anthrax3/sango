@@ -29,6 +29,7 @@ type Image struct {
 	Language string                  `yaml:"language" json:"language"`
 	Options  map[string]agent.Option `yaml:"options"  json:"options,omitempty"`
 	Version  string                  `yaml:"-"        json:"version"`
+	Template string                  `yaml:"-"        json:"-"`
 }
 
 func (i Image) dockerImageName() string {
@@ -256,6 +257,9 @@ func MakeImageList(langpath string, build, nocache bool) ImageList {
 		if err != nil {
 			log.Print(c, err)
 		} else {
+			t := filepath.Join(d, "template.txt")
+			data, _ := ioutil.ReadFile(t)
+			img.Template = string(data)
 			if build {
 				log.Printf("Found config: %s [%s]", img.ID, img.dockerImageName())
 				log.Printf("Building image...")
