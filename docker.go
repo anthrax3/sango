@@ -62,6 +62,22 @@ func (i Image) Exec(in agent.Input, msgch chan<- *agent.Message) (agent.Output, 
 		if _, ok := in.Options[k]; !ok {
 			in.Options[k] = v.Default
 		}
+		o := in.Options[k]
+		in.Options[k] = v.Default
+		switch v.Type{
+			case "list":
+				if s, ok :=	o.(string); ok {
+					for _, i := range v.Candidates {
+						if s == i.(string) {
+							in.Options[k] = s
+						}
+					}
+				}
+			case "bool":
+				if b, ok := o.(bool); ok {
+					in.Options[k] = b
+				}
+		}
 	}
 
 	var stdout bytes.Buffer
