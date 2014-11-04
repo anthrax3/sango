@@ -24,13 +24,14 @@ const dockerAddr = "/var/run/docker.sock"
 const imagePrefix = "sango/"
 
 type Image struct {
-	ID       string                  `yaml:"id"       json:"id"`
-	Name     string                  `yaml:"name"     json:"name"`
-	Language string                  `yaml:"language" json:"language"`
-	Options  map[string]agent.Option `yaml:"options"  json:"options,omitempty"`
-	Version  string                  `yaml:"-"        json:"version"`
-	Template string                  `yaml:"-"        json:"-"`
-	AceMode  string                  `yaml:"acemode"  json:"-"`
+	ID         string                  `yaml:"id"         json:"id"`
+	Name       string                  `yaml:"name"       json:"name"`
+	Language   string                  `yaml:"language"   json:"language"`
+	Options    map[string]agent.Option `yaml:"options"    json:"options,omitempty"`
+	Version    string                  `yaml:"-"          json:"version"`
+	Template   string                  `yaml:"-"          json:"-"`
+	Extensions []string                `yaml:"extensions" json:"extensions"`
+	AceMode    string                  `yaml:"acemode"    json:"-"`
 }
 
 func (i Image) dockerImageName() string {

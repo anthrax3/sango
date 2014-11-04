@@ -2,6 +2,9 @@ id: cpp
 name: C++
 language: C++
 
+extensions:
+  - cpp
+
 acemode: c_cpp
 
 options:

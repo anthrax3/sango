@@ -2,4 +2,7 @@ id: php5
 name: PHP
 language: PHP
 
+extensions:
+  - php
+
 acemode: php

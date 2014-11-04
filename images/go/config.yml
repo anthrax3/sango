@@ -2,6 +2,9 @@ id: go-latest
 name: Go
 language: Go
 
+extensions:
+  - go
+
 acemode: golang
 
 options:

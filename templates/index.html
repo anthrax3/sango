@@ -8,7 +8,7 @@
   <input id="langsearch" type="text" placeholder="Search...">
   <ul id="lang">
     {{ range .images }}
-    <li data-id="{{ .ID }}" data-lang="{{ .Language }}" data-name="{{ .Name }}" data-ver="{{ .Version }}" data-mode="{{ .AceMode }}"><a href="javascript:void(0)">{{ .Name }}<p>{{ .Version }}</p></a>
+    <li data-id="{{ .ID }}" data-ext="{{ (index .Extensions 0) }}" data-lang="{{ .Language }}" data-name="{{ .Name }}" data-ver="{{ .Version }}" data-mode="{{ .AceMode }}"><a href="javascript:void(0)">{{ .Name }}<p>{{ .Version }}</p></a>
     </li>
     {{ end }}
   </ul>
@@ -57,7 +57,6 @@
 
 <script>
   $(function() {
-    var current_lang = '';
     var current_id = '';
     var edited = false;
     var running = false;
@@ -135,7 +134,8 @@
 
       running = true;
       var files = {};
-      files["main." + lang_settings[current_lang].extension] = code;
+      var ext = $('#lang li[data-id=' + current_id + ']').attr('data-ext');
+      files["main." + ext] = code;
       var data = JSON.stringify({
         "environment": current_id,
         "input": {
@@ -276,7 +276,6 @@
         });
 
         current_id = id;
-        current_lang = lang;
         if (!edited) {
           $.get('/template/' + id, {},
             function(data) {

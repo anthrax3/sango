@@ -2,4 +2,7 @@ id: mruby-head
 name: mruby
 language: Ruby
 
+extensions:
+  - rb
+
 acemode: ruby
