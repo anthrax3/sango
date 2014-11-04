@@ -12,9 +12,10 @@
 <div id="nav">
   <h3 style="color: #ff4040"><a href="/" style="text-decoration: none"><img width="24" height="24" src="sango.svg">Sangobox</a></h3> Online compiler (<a href="https://github.com/h2so5/sango">github</a>)
   <h3>Language</h3>
+  <input id="langsearch" type="text" placeholder="Search...">
   <ul id="lang">
     {{ range .images }}
-    <li data-id="{{ .ID }}" data-lang="{{ .Language }}"><a href="javascript:void(0)">{{ .Name }}<p>{{ .Version }}</p></a>
+    <li data-id="{{ .ID }}" data-lang="{{ .Language }}" data-name="{{ .Name }}"><a href="javascript:void(0)">{{ .Name }}<p>{{ .Version }}</p></a>
     </li>
     {{ end }}
   </ul>
@@ -169,24 +170,42 @@
       $.get('/api/log/' + logid, {},
         function(data) {
           applyData(data, true);
-          selectLang(data.environment.id);
+          selectLang(data.environment.id, true);
         },
         'json');
     } else {
-      selectLang('go-latest');
+      var last = localStorage["last_id"];
+      if (!selectLang(last, true)) {
+        selectLang('go-latest', true);
+      }
     }
 
     $('#lang li').click(function() {
-      selectLang($(this).attr('data-id'));
+      selectLang($(this).attr('data-id'), false);
     });
 
-    function selectLang(id) {
+    $('#langsearch').keyup(function(){
+      var s = $(this).val().trim().toLowerCase();
+      if (s == '') {
+        $('#lang li').show();
+      } else {
+        $('#lang li').each(function(){
+          $(this).toggle($(this).attr('data-name').toLowerCase().indexOf(s) != -1);
+        });
+      }
+    })
+
+    function selectLang(id, sort) {
       $li = $('#lang li[data-id=' + id + ']');
       if ($li.length > 0) {
+        if (sort) {
+          $('#lang').prepend($li.detach());
+        }
         $('#lang li').removeClass('selected');
         $li.addClass('selected');
         var lang = $li.attr('data-lang');
         if (lang in lang_settings) {
+          localStorage["last_id"] = id;
           code_editor.getSession().setMode(lang_settings[lang]["ace-mode"]);
           code_editor.renderer.updateFull();
           current_id = id;
@@ -200,6 +219,9 @@
               });
           }
         }
+        return true;
+      } else {
+        return false;
       }
     }
 
