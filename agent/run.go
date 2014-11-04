@@ -7,30 +7,30 @@ import (
 	"io"
 	"io/ioutil"
 	"os"
+	"os/exec"
+	"strings"
 	"time"
 
 	"github.com/vmihailenco/msgpack"
 )
 
+type VersionHandler func() string
 type CmdHandler func([]string, Input, *Output) (string, []string)
 
 type agent struct {
 	in       Input
 	out      Output
-  files []string
+	files    []string
 	buildCmd CmdHandler
 	runCmd   CmdHandler
 }
 
-func Run(buildCmd, runCmd CmdHandler) {
+func Run(buildCmd, runCmd CmdHandler, verCmd VersionHandler) {
 	var version bool
 	flag.BoolVar(&version, "v", false, "")
 	flag.Parse()
 	if version {
-		v, err := ioutil.ReadFile("/sango/version")
-		if err == nil {
-			os.Stdout.Write(v)
-		}
+		os.Stdout.Write([]byte(strings.Trim(verCmd(), "\r\n ")))
 		return
 	}
 
@@ -41,18 +41,18 @@ func Run(buildCmd, runCmd CmdHandler) {
 		return
 	}
 
-  var files []string
-  for k, v := range in.Files {
-    ioutil.WriteFile(k, []byte(v), 0644)
-    files = append(files, k)
-  }
+	var files []string
+	for k, v := range in.Files {
+		ioutil.WriteFile(k, []byte(v), 0644)
+		files = append(files, k)
+	}
 
-  a := agent{
-    in:       in,
-    files: files,
-    buildCmd: buildCmd,
-    runCmd:   runCmd,
-  }
+	a := agent{
+		in:       in,
+		files:    files,
+		buildCmd: buildCmd,
+		runCmd:   runCmd,
+	}
 
 	err = a.build()
 	if err == nil {
@@ -65,6 +65,15 @@ func Run(buildCmd, runCmd CmdHandler) {
 	}
 
 	a.close()
+}
+
+func QuickExec(command string, args ...string) (string, string) {
+	var stdout, stderr bytes.Buffer
+	cmd := exec.Command(command, args...)
+	cmd.Stdout = &stdout
+	cmd.Stderr = &stderr
+	cmd.Run()
+	return string(stdout.Bytes()), string(stderr.Bytes())
 }
 
 func (a *agent) build() error {

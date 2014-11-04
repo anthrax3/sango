@@ -1,8 +1,13 @@
 package main
 
-import "../../agent"
+import (
+	"regexp"
+	"strings"
 
-func build(files []string, in agent.Input, out*agent.Output) (string, []string) {
+	"../../agent"
+)
+
+func build(files []string, in agent.Input, out *agent.Output) (string, []string) {
 	var args []string = []string{
 		"-o",
 		"main",
@@ -14,6 +19,16 @@ func run([]string, agent.Input, *agent.Output) (string, []string) {
 	return "./main", nil
 }
 
+var r = regexp.MustCompile("\\(.+\\)")
+
+func version() string {
+	_, v := agent.QuickExec("g++", "-v")
+	l := strings.Split(v, "\n")
+	v = l[len(l)-2]
+	v = string(r.ReplaceAll([]byte(v), []byte("")))
+	return v
+}
+
 func main() {
-	agent.Run(build, run)
+	agent.Run(build, run, version)
 }

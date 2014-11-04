@@ -8,9 +8,6 @@ WORKDIR mruby
 
 RUN ./minirake
 
-RUN mkdir /sango
-RUN echo -n `./build/host/bin/mruby --version | tr -d '\n'` `git rev-parse HEAD | cut -b1-8 | tr -d '\n'` > /sango/version
-
 RUN chmod 755 /mruby/build/host/bin/mruby
 
 ADD run /home/sango/

@@ -1,8 +1,5 @@
 FROM sango/base
 
-RUN mkdir /sango
-RUN gcc -v 2>&1 | tail -n 1 | sed -r "s/\(.+\)//g" | sed -r "s/(^ +| +$|)//g" | tr -d '\n' > /sango/version
-
 #RUN git clone --depth 1 https://gitorious.org/qt/qtbase.git
 #WORKDIR /qtbase
 #RUN ./configure -opensource -confirm-license
