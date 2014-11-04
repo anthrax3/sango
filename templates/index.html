@@ -33,6 +33,9 @@
   </div>
 
   <div id="output">
+    <div id="share">
+      <span id="tweet"></span>
+    </div>
     <pre class="output strong" id="status"></pre>
     <pre class="output" id="msg"></pre>
   </div>
@@ -75,6 +78,14 @@
       }
     }
 
+    function share(id) {
+      var url = "http://" + location.host + "/" + id;
+      $('#share').show();
+      $('#tweet').empty()
+        .append('<a href="https://twitter.com/share" class="twitter-share-button" data-url="' + url + '" data-count="none" data-dnt="true">Tweet</a>')
+      $.getScript("http://platform.twitter.com/widgets.js");
+    }
+
     function run() {
       var code = code_editor.getSession().getValue();
       var stdin = stdin_editor.getSession().getValue();
@@ -110,6 +121,7 @@
                   sock.close();
                   running = false;
                   window.history.pushState(null, "", "/" + data.data.id);
+                  share(data.data.id);
                   break;
               default:
                   $('#msg').text($('#msg').text() + data.data);
@@ -129,6 +141,7 @@
             success: function(data) {
               applyData(data, false);
               window.history.pushState(null, "", "/" + data.id);
+              share(data.id);
               running = false;
             },
             error: function() {
@@ -171,6 +184,7 @@
         function(data) {
           applyData(data, true);
           selectLang(data.environment.id, true);
+          share(logid);
         },
         'json');
     } else {
