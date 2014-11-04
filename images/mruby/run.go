@@ -7,8 +7,9 @@ func run(files []string, in agent.Input, out *agent.Output) (string, []string) {
 }
 
 func version() string {
-	v, _ := agent.QuickExec("/mruby/build/host/bin/mruby", "--version")
-	return v
+	v, _ := agent.System("/mruby/build/host/bin", "./mruby", "--version")
+	g, _ := agent.System("/mruby", "git", "rev-parse", "HEAD")
+	return v[:len(v)-1] + g[:8]
 }
 
 func main() {

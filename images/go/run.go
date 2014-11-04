@@ -20,7 +20,7 @@ func run([]string, agent.Input, *agent.Output) (string, []string) {
 }
 
 func version() string {
-	v, _ := agent.QuickExec("go", "version")
+	v, _ := agent.System(".", "go", "version")
 	v = strings.Replace(v, "go version", "", -1)
 	return v
 }

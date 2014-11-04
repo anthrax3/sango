@@ -14,7 +14,7 @@ func run(files []string, in agent.Input, out *agent.Output) (string, []string) {
 var r = regexp.MustCompile("\\(.+\\)")
 
 func version() string {
-	v, _ := agent.QuickExec("php", "-v")
+	v, _ := agent.System(".", "php", "-v")
 	v = strings.Split(v, "\n")[0]
 	v = string(r.ReplaceAll([]byte(v), []byte("")))
 	return v
