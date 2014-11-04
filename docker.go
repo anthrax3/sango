@@ -30,6 +30,7 @@ type Image struct {
 	Options    map[string]agent.Option `yaml:"options"    json:"options,omitempty"`
 	Version    string                  `yaml:"-"          json:"version"`
 	Template   string                  `yaml:"-"          json:"-"`
+	HelloWorld string                  `yaml:"-"          json:"-"`
 	Extensions []string                `yaml:"extensions" json:"extensions"`
 	AceMode    string                  `yaml:"acemode"    json:"-"`
 }
@@ -60,6 +61,10 @@ func (i Image) Exec(in agent.Input, msgch chan<- *agent.Message) (agent.Output, 
 		return agent.Output{}, err
 	}
 	id := GenerateID()
+
+	if in.Options == nil {
+		in.Options = make(map[string]interface{})
+	}
 
 	for k, v := range i.Options {
 		if _, ok := in.Options[k]; !ok {
@@ -261,7 +266,9 @@ func MakeImageList(langpath string, build, nocache bool) ImageList {
 		} else {
 			t := filepath.Join(d, "template.txt")
 			data, _ := ioutil.ReadFile(t)
-			img.Template = string(data)
+			h := filepath.Join(d, "hello.txt")
+			data, _ = ioutil.ReadFile(h)
+			img.HelloWorld = string(data)
 			if build {
 				log.Printf("Found config: %s [%s]", img.ID, img.dockerImageName())
 				log.Printf("Building image...")
