@@ -15,7 +15,7 @@
   <input id="langsearch" type="text" placeholder="Search...">
   <ul id="lang">
     {{ range .images }}
-    <li data-id="{{ .ID }}" data-lang="{{ .Language }}" data-name="{{ .Name }}"><a href="javascript:void(0)">{{ .Name }}<p>{{ .Version }}</p></a>
+    <li data-id="{{ .ID }}" data-lang="{{ .Language }}" data-name="{{ .Name }}" data-ver="{{ .Version }}"><a href="javascript:void(0)">{{ .Name }}<p>{{ .Version }}</p></a>
     </li>
     {{ end }}
   </ul>
@@ -252,7 +252,9 @@
         $('#lang li').show();
       } else {
         $('#lang li').each(function(){
-          $(this).toggle($(this).attr('data-name').toLowerCase().indexOf(s) != -1);
+          var b = ($(this).attr('data-name').toLowerCase().indexOf(s) != -1 ||
+            $(this).attr('data-ver').toLowerCase().indexOf(s) != -1);
+          $(this).toggle(b);
         });
       }
     })
