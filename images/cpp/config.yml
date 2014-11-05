@@ -1,5 +1,5 @@
 id: cpp
-name: C++
+name: gcc
 language: C++
 
 extensions:

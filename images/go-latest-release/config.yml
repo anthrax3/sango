@@ -1,5 +1,5 @@
 id: go-latest-release
-name: Go (Latest release)
+name: Latest release
 language: Go
 
 extensions:

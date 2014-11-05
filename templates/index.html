@@ -8,7 +8,7 @@
   <input id="langsearch" type="text" placeholder="Search...">
   <ul id="lang">
     {{ range .images }}
-    <li data-id="{{ .ID }}" data-ext="{{ (index .Extensions 0) }}" data-name="{{ .Name }}" data-ver="{{ .Version }}" data-mode="{{ .AceMode }}"><a href="javascript:void(0)">{{ .Name }}<p>{{ .Version }}</p></a>
+    <li data-id="{{ .ID }}" data-ext="{{ (index .Extensions 0) }}" data-name="{{ .Name }}" data-ver="{{ .Version }}" data-mode="{{ .AceMode }}"><a href="javascript:void(0)">{{ .Language }}{{if .Name}}<span>{{ .Name }}</span>{{ end }}<p>{{ .Version }}</p></a>
     </li>
     {{ end }}
   </ul>

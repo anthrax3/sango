@@ -309,5 +309,5 @@ func (a ImageArray) Swap(i, j int) {
 }
 
 func (a ImageArray) Less(i, j int) bool {
-	return a[i].Name < a[j].Name
+	return a[i].Language < a[j].Language
 }
