@@ -226,6 +226,7 @@
           applyData(data, true);
           selectLang(data.environment.id, true);
           share(logid);
+          edited = false;
         },
         'json');
     } else {
@@ -279,12 +280,11 @@
         if (!edited) {
           $.get('/template/' + id, {},
             function(data) {
-              var e = edited;
               code_editor.getSession().setValue(data);
               code_editor.find('@cursor@');
               code_editor.replace('');
               code_editor.focus();
-              edited = e;
+              edited = false;
             });
         }
         return true;
