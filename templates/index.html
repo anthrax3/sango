@@ -8,7 +8,7 @@
   <input id="langsearch" type="text" placeholder="Search...">
   <ul id="lang">
     {{ range .images }}
-    <li data-id="{{ .ID }}" data-ext="{{ (index .Extensions 0) }}" data-lang="{{ .Language }}" data-name="{{ .Name }}" data-ver="{{ .Version }}" data-mode="{{ .AceMode }}"><a href="javascript:void(0)">{{ .Name }}<p>{{ .Version }}</p></a>
+    <li data-id="{{ .ID }}" data-ext="{{ (index .Extensions 0) }}" data-name="{{ .Name }}" data-ver="{{ .Version }}" data-mode="{{ .AceMode }}"><a href="javascript:void(0)">{{ .Name }}<p>{{ .Version }}</p></a>
     </li>
     {{ end }}
   </ul>
@@ -320,7 +320,6 @@
         $('.options').hide();
         $('.options[data-id=' + id + ']').show();
 
-        var lang = $li.attr('data-lang');
         var mode = $li.attr('data-mode');
         localStorage["last_id"] = id;
 
