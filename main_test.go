@@ -58,22 +58,22 @@ func TestAPI(t *testing.T) {
 			t.Fatal(err)
 		}
 		res, err = http.Post(fmt.Sprintf("http://localhost:%d/api/run", conf.Port), "application/json", bytes.NewReader(js))
-    if err != nil {
-      t.Fatal(err)
-    }
+		if err != nil {
+			t.Fatal(err)
+		}
 
-    var result ExecResponse
-    data, err = ioutil.ReadAll(res.Body)
-    if err != nil {
-      t.Fatal(err)
-    }
-    err = json.Unmarshal(data, &result)
-    if err != nil {
-      t.Fatal(err)
-    }
+		var result ExecResponse
+		data, err = ioutil.ReadAll(res.Body)
+		if err != nil {
+			t.Fatal(err)
+		}
+		err = json.Unmarshal(data, &result)
+		if err != nil {
+			t.Fatal(err)
+		}
 
-    if result.Output.RunStdout != "Hello World" {
-      t.Fatalf("The program should return 'Hello World'; not '%s'", result.Output.RunStdout)
-    }
+		if result.Output.RunStdout != "Hello World" {
+			t.Fatalf("The program should return 'Hello World'; not '%s'", result.Output.RunStdout)
+		}
 	}
 }

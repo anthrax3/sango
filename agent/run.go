@@ -15,6 +15,7 @@ import (
 )
 
 type VersionHandler func() string
+type FormatHandler func(string) string
 type CmdHandler func([]string, Input, *Output) (string, []string)
 
 type agent struct {
@@ -25,12 +26,33 @@ type agent struct {
 	runCmd   CmdHandler
 }
 
-func Run(buildCmd, runCmd CmdHandler, verCmd VersionHandler) {
-	var version bool
+func Run(buildCmd, runCmd CmdHandler, fmtCmd FormatHandler, verCmd VersionHandler) {
+	var version, format bool
 	flag.BoolVar(&version, "v", false, "")
+	flag.BoolVar(&format, "f", false, "")
 	flag.Parse()
 	if version {
 		os.Stdout.Write([]byte(strings.Trim(verCmd(), "\r\n ")))
+		return
+	}
+
+	if format {
+		var f Format
+		d := msgpack.NewDecoder(os.Stdin)
+		err := d.Decode(&f)
+		if err != nil {
+			return
+		}
+		if fmtCmd != nil {
+			for k, v := range f.Files {
+				c := fmtCmd(v)
+				if len(c) > 0 {
+					f.Files[k] = c
+				}
+			}
+		}
+		e := msgpack.NewEncoder(os.Stdout)
+		e.Encode(f)
 		return
 	}
 
@@ -67,12 +89,13 @@ func Run(buildCmd, runCmd CmdHandler, verCmd VersionHandler) {
 	a.close()
 }
 
-func System(wdir, command string, args ...string) (string, string) {
+func System(wdir, stdin, command string, args ...string) (string, string) {
 	path, _ := os.Getwd()
 	os.Chdir(wdir)
 	defer os.Chdir(path)
 	var stdout, stderr bytes.Buffer
 	cmd := exec.Command(command, args...)
+	cmd.Stdin = strings.NewReader(stdin)
 	cmd.Stdout = &stdout
 	cmd.Stderr = &stderr
 	cmd.Run()

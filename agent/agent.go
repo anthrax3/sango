@@ -122,6 +122,11 @@ type Output struct {
 	RunningTime  float64   `json:"running-time"`
 }
 
+type Format struct {
+	Files   map[string]string      `json:"files"`
+	Options map[string]interface{} `json:"options,omitempty"`
+}
+
 type TimeoutError struct{}
 
 func (e TimeoutError) Error() string {

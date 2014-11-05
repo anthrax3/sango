@@ -14,12 +14,12 @@ func run(files []string, in agent.Input, out *agent.Output) (string, []string) {
 var r = regexp.MustCompile("\\(.+\\)")
 
 func version() string {
-	v, _ := agent.System(".", "php", "-v")
+	v, _ := agent.System(".", "", "php", "-v")
 	v = strings.Split(v, "\n")[0]
 	v = string(r.ReplaceAll([]byte(v), []byte("")))
 	return v
 }
 
 func main() {
-	agent.Run(nil, run, version)
+	agent.Run(nil, run, nil, version)
 }

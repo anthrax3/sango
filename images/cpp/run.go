@@ -32,7 +32,7 @@ func run([]string, agent.Input, *agent.Output) (string, []string) {
 var r = regexp.MustCompile("\\(.+\\)")
 
 func version() string {
-	_, v := agent.System(".", "g++", "-v")
+	_, v := agent.System(".", "", "g++", "-v")
 	l := strings.Split(v, "\n")
 	v = l[len(l)-2]
 	v = string(r.ReplaceAll([]byte(v), []byte("")))
@@ -40,5 +40,5 @@ func version() string {
 }
 
 func main() {
-	agent.Run(build, run, version)
+	agent.Run(build, run, nil, version)
 }

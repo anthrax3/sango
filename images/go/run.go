@@ -26,12 +26,17 @@ func run([]string, agent.Input, *agent.Output) (string, []string) {
 	return "./main", nil
 }
 
+func format(code string) string {
+	v, _ := agent.System(".", code, "goimports")
+	return v
+}
+
 func version() string {
-	v, _ := agent.System(".", "go", "version")
+	v, _ := agent.System(".", "", "go", "version")
 	v = strings.Replace(v, "go version", "", -1)
 	return v
 }
 
 func main() {
-	agent.Run(build, run, version)
+	agent.Run(build, run, format, version)
 }
