@@ -29,11 +29,6 @@ func run([]string, agent.Input, *agent.Output) (string, []string) {
 	return "./main", nil
 }
 
-func format(code string) string {
-	v, _ := agent.System(".", code, "clang-format-3.3")
-	return v
-}
-
 var r = regexp.MustCompile("\\(.+\\)")
 
 func version() string {
@@ -45,5 +40,5 @@ func version() string {
 }
 
 func main() {
-	agent.Run(build, run, format, version)
+	agent.Run(build, run, version)
 }

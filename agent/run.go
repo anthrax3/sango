@@ -15,7 +15,6 @@ import (
 )
 
 type VersionHandler func() string
-type FormatHandler func(string) string
 type CmdHandler func([]string, Input, *Output) (string, []string)
 
 type agent struct {
@@ -26,33 +25,13 @@ type agent struct {
 	runCmd   CmdHandler
 }
 
-func Run(buildCmd, runCmd CmdHandler, fmtCmd FormatHandler, verCmd VersionHandler) {
+func Run(buildCmd, runCmd CmdHandler, verCmd VersionHandler) {
 	var version, format bool
 	flag.BoolVar(&version, "v", false, "")
 	flag.BoolVar(&format, "f", false, "")
 	flag.Parse()
 	if version {
 		os.Stdout.Write([]byte(strings.Trim(verCmd(), "\r\n ")))
-		return
-	}
-
-	if format {
-		var f Format
-		d := msgpack.NewDecoder(os.Stdin)
-		err := d.Decode(&f)
-		if err != nil {
-			return
-		}
-		if fmtCmd != nil {
-			for k, v := range f.Files {
-				c := fmtCmd(v)
-				if len(c) > 0 {
-					f.Files[k] = c
-				}
-			}
-		}
-		e := msgpack.NewEncoder(os.Stdout)
-		e.Encode(f)
 		return
 	}
 

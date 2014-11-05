@@ -13,5 +13,5 @@ func version() string {
 }
 
 func main() {
-	agent.Run(nil, run, nil, version)
+	agent.Run(nil, run, version)
 }

@@ -117,7 +117,6 @@ func NewSango(conf Config) *Sango {
 		r.Get("/list", s.apiImageList)
 		r.Post("/run", s.apiRun)
 		r.Get("/run/stream", s.apiRunStreaming)
-		r.Post("/format", s.apiFormat)
 		r.Get("/log/:id", s.apiLog)
 	})
 
@@ -275,41 +274,6 @@ func (s *Sango) apiLog(r render.Render, params martini.Params) {
 	r.JSON(200, res)
 }
 
-func (s *Sango) apiFormat(r render.Render, res http.ResponseWriter, req *http.Request) {
-	reader := io.LimitReader(req.Body, s.conf.UploadLimit)
-	d := json.NewDecoder(reader)
-	var freq FormatRequest
-	err := d.Decode(&freq)
-	if err != nil {
-		log.Print(err)
-		if reader.(*io.LimitedReader).N <= 0 {
-			r.JSON(413, map[string]string{"error": "Too large input"})
-			return
-		} else {
-			r.JSON(400, map[string]string{"error": "Bad request"})
-			return
-		}
-	}
-	if len(freq.Input.Files) == 0 {
-		r.JSON(400, map[string]string{"error": "No input files"})
-		return
-	}
-	img, ok := s.images[freq.Environment]
-	if !ok {
-		r.JSON(501, map[string]string{"error": "No such environment"})
-		return
-	}
-
-	f, err := img.Foramt(freq.Input)
-	if err != nil {
-		log.Print(err)
-		r.JSON(500, map[string]string{"error": "Internal error"})
-		return
-	}
-
-	r.JSON(200, f)
-}
-
 func (s *Sango) template(res http.ResponseWriter, params martini.Params) {
 	env := params["env"]
 	img, ok := s.images[env]
@@ -351,13 +315,6 @@ type ExecResponse struct {
 	Output      agent.Output `json:"output"`
 	Date        time.Time    `json:"date"`
 }
-
-type FormatRequest struct {
-	Environment string       `json:"environment"`
-	Input       agent.Format `json:"input"`
-}
-
-type FormatResponse agent.Format
 
 func main() {
 	log.SetFlags(log.LstdFlags | log.Lshortfile)

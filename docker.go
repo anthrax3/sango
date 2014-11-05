@@ -51,31 +51,6 @@ func (i Image) GetVersion() (string, error) {
 	}
 }
 
-func (i Image) Foramt(foramt agent.Format) (agent.Format, error) {
-	data, err := msgpack.Marshal(foramt)
-
-	var f agent.Format
-	if err != nil {
-		return f, err
-	}
-
-	var stdout bytes.Buffer
-	cmd := exec.Command("docker", "run", "-i", "--net=none", i.dockerImageName(), "./run", "-f")
-	cmd.Stdin = bytes.NewReader(data)
-	cmd.Stdout = &stdout
-	err = cmd.Run()
-
-	if err != nil {
-		return f, err
-	} else {
-		err := msgpack.Unmarshal(stdout.Bytes(), &f)
-		if err != nil {
-			return f, err
-		}
-	}
-	return f, nil
-}
-
 func GenerateID() string {
 	return string(base58.EncodeBig(nil, big.NewInt(0).Add(big.NewInt(0xc0ffee), big.NewInt(rand.Int63()))))
 }

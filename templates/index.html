@@ -116,35 +116,6 @@
       $.getScript("http://platform.twitter.com/widgets.js");
     }
 
-    function format() {
-      var code = code_editor.getSession().getValue();
-      var files = {};
-      var ext = $('#lang li[data-id=' + current_id + ']').attr('data-ext');
-      files["main." + ext] = code;
-      var data = JSON.stringify({
-        "environment": current_id,
-        "input": {
-          "files": files
-        }
-      });
-      Pace.track(function() {
-        $.ajax({
-          type: "POST",
-          url: '/api/format',
-          data: data,
-          success: function(data) {
-            for (var f in data.files) {
-              code_editor.getSession().setValue(data.files[f]);
-            }
-          },
-          error: function() {
-
-          },
-          dataType: 'json'
-        });
-      });
-    }
-
     function run() {
       var code = code_editor.getSession().getValue();
       var stdin = stdin_editor.getSession().getValue();
@@ -224,7 +195,6 @@
     }
 
     $('#run-bt').click(run);
-    $('#run-fmt').click(format);
 
     code_editor.commands.addCommand({
       name: "run",
@@ -235,15 +205,6 @@
       exec: run
     });
 
-    code_editor.commands.addCommand({
-      name: "format",
-      bindKey: {
-        win: "Ctrl-Shift-F",
-        mac: "Command-Shift-F"
-      },
-      exec: format
-    });
-
     stdin_editor.commands.addCommand({
       name: "run",
       bindKey: {
@@ -251,24 +212,10 @@
         mac: "Command-Enter"
       },
       exec: run
-    });
-
-    stdin_editor.commands.addCommand({
-      name: "format",
-      bindKey: {
-        win: "Ctrl-Shift-F",
-        mac: "Command-Shift-F"
-      },
-      exec: format
     });
 
     Mousetrap.bind('ctrl+enter', function(e) {
       run();
-      return false;
-    });
-
-    Mousetrap.bind('ctrl+shift+f', function(e) {
-      format();
       return false;
     });
 
