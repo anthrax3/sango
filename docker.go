@@ -266,6 +266,7 @@ func MakeImageList(langpath string, build, nocache bool) ImageList {
 		} else {
 			t := filepath.Join(d, "template.txt")
 			data, _ := ioutil.ReadFile(t)
+			img.Template = string(data)
 			h := filepath.Join(d, "hello.txt")
 			data, _ = ioutil.ReadFile(h)
 			img.HelloWorld = string(data)
