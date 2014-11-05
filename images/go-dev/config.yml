@@ -1,5 +1,5 @@
-id: go-latest
-name: Go
+id: go-dev
+name: Go (Development)
 language: Go
 
 extensions:

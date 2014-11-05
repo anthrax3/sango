@@ -1,0 +1,14 @@
+id: go-latest-release
+name: Go (Latest release)
+language: Go
+
+extensions:
+  - go
+
+acemode: golang
+
+options:
+  race:
+    title: Race Detector
+    type: bool
+    default: false
