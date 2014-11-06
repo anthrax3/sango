@@ -29,11 +29,7 @@ import (
 )
 
 var sangoPath string
-
-var forceBuild *bool = flag.Bool("b", false, "Force to rebuild all docker images on startup")
 var configFile *string = flag.String("f", "/etc/sango.yml", "Specify config file")
-var noCache *bool = flag.Bool("nocache", false, "Do not use cache on rebuilds")
-var noRun *bool = flag.Bool("norun", false, "Do not run server")
 
 type Sango struct {
 	*martini.ClassicMartini
@@ -94,7 +90,7 @@ func NewSango(conf Config) *Sango {
 	}
 
 	sango.CleanImages()
-	images := sango.MakeImageList(conf.ImageDir, *forceBuild, *noCache)
+	images := sango.MakeImageList(conf.ImageDir, false, false)
 
 	s := &Sango{
 		ClassicMartini: m,
@@ -334,12 +330,8 @@ func main() {
 	sangoPath = path
 
 	conf := LoadConfig(*configFile)
-	if !*noRun {
-		s := NewSango(conf)
-		defer s.Close()
-		log.Printf("listening on :%d\n", conf.Port)
-		log.Fatal(http.ListenAndServe(fmt.Sprintf(":%d", conf.Port), s))
-	} else {
-		sango.MakeImageList(conf.ImageDir, *forceBuild, *noCache)
-	}
+	s := NewSango(conf)
+	defer s.Close()
+	log.Printf("listening on :%d\n", conf.Port)
+	log.Fatal(http.ListenAndServe(fmt.Sprintf(":%d", conf.Port), s))
 }
