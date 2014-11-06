@@ -6,7 +6,6 @@ import (
 	"flag"
 	"fmt"
 	"io"
-	"io/ioutil"
 	"log"
 	"math/rand"
 	"net/http"
@@ -23,9 +22,8 @@ import (
 	"github.com/martini-contrib/render"
 	"github.com/syndtr/goleveldb/leveldb"
 	"github.com/vmihailenco/msgpack"
-	"gopkg.in/yaml.v2"
 
-	"./src"
+	sango "./src"
 )
 
 var sangoPath string
@@ -33,49 +31,13 @@ var configFile *string = flag.String("f", "/etc/sango.yml", "Specify config file
 
 type Sango struct {
 	*martini.ClassicMartini
-	conf   Config
+	conf   sango.Config
 	db     *leveldb.DB
 	images sango.ImageList
 	reqch  chan int
 }
 
-type Config struct {
-	Port            uint16        `yaml:"port"`
-	Database        string        `yaml:"database"`
-	ImageDir        string        `yaml:"image_dir"`
-	UploadLimit     int64         `yaml:"upload_limit"`
-	ExecLimit       int           `yaml:"exec_limit"`
-	CleanInterval   time.Duration `yaml:"clean_interval"`
-	GoogleAnalytics string        `yaml:"google_analytics"`
-}
-
-func defaultConfig() Config {
-	return Config{
-		Port:            3000,
-		Database:        "./sango.leveldb",
-		ImageDir:        "./images",
-		UploadLimit:     20480,
-		CleanInterval:   time.Minute,
-		ExecLimit:       5,
-		GoogleAnalytics: "",
-	}
-}
-
-func LoadConfig(path string) Config {
-	c := defaultConfig()
-	data, err := ioutil.ReadFile(path)
-	if err == nil {
-		err := yaml.Unmarshal(data, &c)
-		if err != nil {
-			log.Print(err)
-		}
-	} else {
-		log.Print(err)
-	}
-	return c
-}
-
-func NewSango(conf Config) *Sango {
+func NewSango(conf sango.Config) *Sango {
 	m := martini.Classic()
 	m.Use(gzip.All())
 	m.Use(martini.Static(filepath.Join(sangoPath, "public")))
@@ -90,7 +52,7 @@ func NewSango(conf Config) *Sango {
 	}
 
 	sango.CleanImages()
-	images := sango.MakeImageList(conf.ImageDir, false, false)
+	images := sango.MakeImageList(conf.ImageDir, false, false, false)
 
 	s := &Sango{
 		ClassicMartini: m,
@@ -329,7 +291,7 @@ func main() {
 	}
 	sangoPath = path
 
-	conf := LoadConfig(*configFile)
+	conf := sango.LoadConfig(*configFile)
 	s := NewSango(conf)
 	defer s.Close()
 	log.Printf("listening on :%d\n", conf.Port)

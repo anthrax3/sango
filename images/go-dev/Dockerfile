@@ -6,8 +6,8 @@ RUN ./all.bash
 
 ENV PATH /go/bin:$PATH
 
-ADD config.yml /home/sango/
-ADD run /home/sango/
+ADD . /home/sango/
+
 WORKDIR /home/sango
 RUN chmod 755 run
 

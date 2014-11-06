@@ -201,6 +201,17 @@ func buildImage(dir, image string, nocache bool) error {
 	return nil
 }
 
+func pullImage(image string) error {
+	cmd := exec.Command("docker", "pull", image)
+	cmd.Stdout = os.Stdout
+	cmd.Stderr = os.Stderr
+	err := cmd.Run()
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
 func CleanImages() error {
 	var stdout bytes.Buffer
 	cmd := exec.Command("docker", "ps", "-a", "-q")
@@ -223,7 +234,7 @@ func CleanImages() error {
 
 type ImageList map[string]Image
 
-func MakeImageList(langpath string, build, nocache bool) ImageList {
+func MakeImageList(langpath string, pull, build, nocache bool) ImageList {
 	l := make(ImageList)
 
 	info, err := os.Stat(langpath)
@@ -267,12 +278,12 @@ func MakeImageList(langpath string, build, nocache bool) ImageList {
 		if err != nil {
 			log.Print(c, err)
 		} else {
-			t := filepath.Join(d, "template.txt")
-			data, _ := ioutil.ReadFile(t)
-			img.Template = string(data)
-			h := filepath.Join(d, "hello.txt")
-			data, _ = ioutil.ReadFile(h)
-			img.HelloWorld = string(data)
+			if pull && !build {
+				err := pullImage(img.dockerImageName())
+				if err != nil {
+					log.Print(err)
+				}
+			}
 			if build {
 				log.Printf("Found config: %s [%s]", img.ID, img.dockerImageName())
 				log.Printf("Building image...")

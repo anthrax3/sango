@@ -11,8 +11,8 @@ RUN ./minirake
 RUN chmod 755 /mruby/build/host/bin/mruby
 ENV PATH /mruby/build/host/bin:$PATH
 
-ADD config.yml /home/sango/
-ADD run /home/sango/
+ADD . /home/sango/
+
 WORKDIR /home/sango
 RUN chmod 755 run
 

@@ -7,8 +7,6 @@ import (
 	"io/ioutil"
 	"net/http"
 	"testing"
-
-	"./src"
 )
 
 func TestAPI(t *testing.T) {

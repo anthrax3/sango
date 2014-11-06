@@ -2,8 +2,8 @@ FROM sango/base
 
 RUN apt-get install -y clang-3.5
 
-ADD config.yml /home/sango/
-ADD run /home/sango/
+ADD . /home/sango/
+
 WORKDIR /home/sango
 RUN chmod 755 run
 

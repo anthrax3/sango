@@ -43,6 +43,11 @@ func Run(buildCmd, runCmd CmdHandler, verCmd VersionHandler) {
 			return
 		}
 
+		data, _ = ioutil.ReadFile("template.txt")
+		img.Template = string(data)
+		data, _ = ioutil.ReadFile("hello.txt")
+		img.HelloWorld = string(data)
+
 		ver := strings.Trim(verCmd(), "\r\n ")
 		img.Version = ver
 
