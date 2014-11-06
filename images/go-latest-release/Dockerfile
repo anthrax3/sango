@@ -1,6 +1,6 @@
 FROM golang
 
-apt-get install -y time
+RUN apt-get install -y time
 
 RUN useradd -m sango
 ADD run /home/sango/
