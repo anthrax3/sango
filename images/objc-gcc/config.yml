@@ -1,0 +1,10 @@
+id: objc-gcc
+name: gcc
+language: Objective-C
+
+extensions:
+  - m
+
+acemode: c_cpp
+
+options:

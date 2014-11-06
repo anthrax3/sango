@@ -1,0 +1,29 @@
+id: c-gcc
+name: gcc
+language: C
+
+extensions:
+  - c
+
+acemode: c_cpp
+
+options:
+  optim:
+    title: Optimization
+    type: list
+    default: -O0
+    candidates:
+      - -O0
+      - -O1
+      - -O2
+      - -O3
+      - -Os
+  std:
+    title: Standard
+    type: list
+    default: -std=c99
+    candidates:
+      - -std=c90
+      - -std=gnu90
+      - -std=c99
+      - -std=gnu99
