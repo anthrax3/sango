@@ -1,6 +1,6 @@
 id: php5
 name:
-language: PHP5
+language: PHP
 
 extensions:
   - php
