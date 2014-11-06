@@ -11,9 +11,8 @@ func build(files []string, in agent.Input, out *agent.Output) (string, []string)
 	var args []string = []string{
 		"-o",
 		"main",
+		"-fconstant-string-class=NSConstantString",
 	}
-
-	args = append(args, "-fconstant-string-class=NSConstantString")
 
         v, _ := agent.System(".", "", "gnustep-config", "--objc-flags")
 	v = strings.Replace(v, " -I/root/GNUstep/Library/Headers", "", -1)
