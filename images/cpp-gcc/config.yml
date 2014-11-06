@@ -1,4 +1,4 @@
-id: cpp
+id: cpp-gcc
 name: gcc
 language: C++
 
