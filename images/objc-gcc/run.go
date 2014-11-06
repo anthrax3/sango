@@ -4,17 +4,17 @@ import (
 	"regexp"
 	"strings"
 
-	"../../agent"
+	"../../sango"
 )
 
-func build(files []string, in agent.Input, out *agent.Output) (string, []string) {
+func build(files []string, in sango.Input, out *sango.Output) (string, []string) {
 	var args []string = []string{
 		"-o",
 		"main",
 		"-fconstant-string-class=NSConstantString",
 	}
 
-        v, _ := agent.System(".", "", "gnustep-config", "--objc-flags")
+        v, _ := sango.System(".", "", "gnustep-config", "--objc-flags")
 	v = strings.Replace(v, " -I/root/GNUstep/Library/Headers", "", -1)
 	v = strings.Replace(v, "\n", "", -1)
 	args = append(args, strings.Split(v, " ")...)
@@ -22,21 +22,21 @@ func build(files []string, in agent.Input, out *agent.Output) (string, []string)
 	args = append(args, files...)
 	args = append(args, "-lgnustep-base")
 
-	v, _ = agent.System(".", "", "gnustep-config", "--objc-libs")
+	v, _ = sango.System(".", "", "gnustep-config", "--objc-libs")
 	v = strings.Replace(v, "\n", "", -1)
 	args = append(args, strings.Split(v, " ")...)
 
 	return "gcc", args
 }
 
-func run([]string, agent.Input, *agent.Output) (string, []string) {
+func run([]string, sango.Input, *sango.Output) (string, []string) {
 	return "./main", nil
 }
 
 var r = regexp.MustCompile("\\(.+\\)")
 
 func version() string {
-	_, v := agent.System(".", "", "gcc", "-v")
+	_, v := sango.System(".", "", "gcc", "-v")
 	l := strings.Split(v, "\n")
 	v = l[len(l)-2]
 	v = string(r.ReplaceAll([]byte(v), []byte("")))
@@ -44,5 +44,5 @@ func version() string {
 }
 
 func main() {
-	agent.Run(build, run, version)
+	sango.Run(build, run, version)
 }

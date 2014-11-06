@@ -1,4 +1,4 @@
-package agent
+package sango
 
 import (
 	"io"

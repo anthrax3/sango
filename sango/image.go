@@ -1,4 +1,4 @@
-package main
+package sango
 
 import (
 	"bytes"
@@ -16,49 +16,52 @@ import (
 	"github.com/tv42/base58"
 	"github.com/vmihailenco/msgpack"
 	"gopkg.in/yaml.v2"
-
-	"./agent"
 )
 
 const dockerAddr = "/var/run/docker.sock"
 const imagePrefix = "sango/"
 
 type Image struct {
-	ID         string                  `yaml:"id"         json:"id"`
-	Name       string                  `yaml:"name"       json:"name"`
-	Language   string                  `yaml:"language"   json:"language"`
-	Options    map[string]agent.Option `yaml:"options"    json:"options,omitempty"`
-	Version    string                  `yaml:"-"          json:"version"`
-	Template   string                  `yaml:"-"          json:"-"`
-	HelloWorld string                  `yaml:"-"          json:"-"`
-	Extensions []string                `yaml:"extensions" json:"extensions"`
-	AceMode    string                  `yaml:"acemode"    json:"-"`
+	ID         string            `yaml:"id"         json:"id"`
+	Name       string            `yaml:"name"       json:"name"`
+	Language   string            `yaml:"language"   json:"language"`
+	Options    map[string]Option `yaml:"options"    json:"options,omitempty"`
+	Version    string            `yaml:"-"          json:"version"`
+	Template   string            `yaml:"-"          json:"-"`
+	HelloWorld string            `yaml:"-"          json:"-"`
+	Extensions []string          `yaml:"extensions" json:"extensions"`
+	AceMode    string            `yaml:"acemode"    json:"-"`
 }
 
 func (i Image) dockerImageName() string {
 	return imagePrefix + i.ID
 }
 
-func (i Image) GetVersion() (string, error) {
+func (i *Image) GetInfo() error {
 	var stdout bytes.Buffer
 	cmd := exec.Command("docker", "run", "-i", "--net=none", i.dockerImageName(), "./run", "-v")
 	cmd.Stdout = &stdout
 	err := cmd.Run()
+
 	if err != nil {
-		return "", err
+		return err
 	} else {
-		return stdout.String(), nil
+		err := msgpack.Unmarshal(stdout.Bytes(), i)
+		if err != nil {
+			return err
+		}
 	}
+	return nil
 }
 
 func GenerateID() string {
 	return string(base58.EncodeBig(nil, big.NewInt(0).Add(big.NewInt(0xc0ffee), big.NewInt(rand.Int63()))))
 }
 
-func (i Image) Exec(in agent.Input, msgch chan<- *agent.Message) (agent.Output, error) {
+func (i Image) Exec(in Input, msgch chan<- *Message) (Output, error) {
 	data, err := msgpack.Marshal(in)
 	if err != nil {
-		return agent.Output{}, err
+		return Output{}, err
 	}
 	id := GenerateID()
 
@@ -101,14 +104,14 @@ func (i Image) Exec(in agent.Input, msgch chan<- *agent.Message) (agent.Output, 
 		ch <- cmd.Wait()
 	}()
 
-	out := agent.Output{
-		MixedOutput: make([]agent.Message, 0),
+	out := Output{
+		MixedOutput: make([]Message, 0),
 	}
 
 	go func() {
 		d := msgpack.NewDecoder(r)
 		for {
-			var m agent.Message
+			var m Message
 			err := d.Decode(&m)
 			if err != nil {
 				if msgch != nil {
@@ -139,7 +142,7 @@ func (i Image) Exec(in agent.Input, msgch chan<- *agent.Message) (agent.Output, 
 	} else {
 		err = msgpack.Unmarshal(stdout.Bytes(), &out)
 		if err != nil {
-			return agent.Output{}, err
+			return Output{}, err
 		}
 	}
 
@@ -283,11 +286,10 @@ func MakeImageList(langpath string, build, nocache bool) ImageList {
 			if err != nil {
 				log.Printf("Filed to build image: %v", err)
 			} else {
-				ver, err := img.GetVersion()
+				err := img.GetInfo()
 				if err != nil {
 					log.Printf("Filed to get version: %v", err)
 				} else {
-					img.Version = ver
 					log.Printf("Get version: %s (%s)", img.Language, img.Version)
 					l[img.ID] = img
 				}

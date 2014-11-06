@@ -1,7 +1,7 @@
 all: main image
 
-main: *.go
-	go build -o main *.go
+main: main.go sango/image.go sango/agent.go
+	go build -o main main.go
 
 image: main
 	./main -norun

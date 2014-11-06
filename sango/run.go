@@ -1,4 +1,4 @@
-package agent
+package sango
 
 import (
 	"bytes"
@@ -12,6 +12,7 @@ import (
 	"time"
 
 	"github.com/vmihailenco/msgpack"
+	"gopkg.in/yaml.v2"
 )
 
 type VersionHandler func() string
@@ -26,12 +27,28 @@ type agent struct {
 }
 
 func Run(buildCmd, runCmd CmdHandler, verCmd VersionHandler) {
-	var version, format bool
+	var version bool
 	flag.BoolVar(&version, "v", false, "")
-	flag.BoolVar(&format, "f", false, "")
 	flag.Parse()
+
 	if version {
-		os.Stdout.Write([]byte(strings.Trim(verCmd(), "\r\n ")))
+		var img Image
+		data, err := ioutil.ReadFile("config.yml")
+		if err != nil {
+			return
+		}
+
+		err = yaml.Unmarshal(data, &img)
+		if err != nil {
+			return
+		}
+
+		ver := strings.Trim(verCmd(), "\r\n ")
+		img.Version = ver
+
+		e := msgpack.NewEncoder(os.Stdout)
+		e.Encode(img)
+		os.Stdout.Close()
 		return
 	}
 
