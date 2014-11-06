@@ -3,7 +3,7 @@ package main
 import (
 	"strings"
 
-	"../../sango"
+	"../../src"
 )
 
 func build(files []string, in sango.Input, out *sango.Output) (string, []string) {

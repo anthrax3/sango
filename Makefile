@@ -1,15 +1,12 @@
-all: main image
+all: sangobox
 
-main: main.go sango/image.go sango/agent.go
-	go build -o main main.go
-
-image: main
-	./main -norun
+sangobox: main.go src/image.go src/agent.go
+	go build -o sangobox main.go
 
 test: main
 	go test
 
 clean:
-	@rm -rf main
+	@rm -rf sangobox
 
 .PHONY: test clean

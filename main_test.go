@@ -7,6 +7,8 @@ import (
 	"io/ioutil"
 	"net/http"
 	"testing"
+
+	"./src"
 )
 
 func TestAPI(t *testing.T) {
@@ -26,7 +28,7 @@ func TestAPI(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	var images []Image
+	var images []sango.Image
 
 	data, err := ioutil.ReadAll(res.Body)
 	if err != nil {
@@ -73,7 +75,7 @@ func TestAPI(t *testing.T) {
 		}
 
 		if result.Output.RunStdout != "Hello World" {
-			t.Fatalf("The program should return 'Hello World'; not '%s'", result.Output.RunStdout)
+			t.Fatalf("%s: The program should return 'Hello World'; not '%s'", img.ID, result.Output.RunStdout)
 		}
 	}
 }

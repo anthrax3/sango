@@ -4,7 +4,7 @@ import (
 	"regexp"
 	"strings"
 
-	"../../sango"
+	"../../src"
 )
 
 func run(files []string, in sango.Input, out *sango.Output) (string, []string) {

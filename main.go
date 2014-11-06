@@ -25,7 +25,7 @@ import (
 	"github.com/vmihailenco/msgpack"
 	"gopkg.in/yaml.v2"
 
-	"./sango"
+	"./src"
 )
 
 var sangoPath string
