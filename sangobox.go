@@ -46,7 +46,15 @@ func NewSango(conf sango.Config) *Sango {
 		Extensions: []string{".html"},
 	}))
 
-	db, err := redis.Dial("tcp", ":6379")
+	eaddr := os.Getenv("REDIS_PORT_6379_TCP_ADDR")
+	eport := os.Getenv("REDIS_PORT_6379_TCP_PORT")
+
+	addr := ":6379"
+	if len(eaddr) > 0 && len(eport) > 0 {
+	   addr = eaddr + ":" + eport
+	}
+
+	db, err := redis.Dial("tcp", addr)
 	if err != nil {
 		log.Fatal(err)
 	}
