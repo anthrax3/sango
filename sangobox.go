@@ -16,11 +16,11 @@ import (
 	"time"
 
 	"bitbucket.org/kardianos/osext"
+	"github.com/garyburd/redigo/redis"
 	"github.com/go-martini/martini"
 	"github.com/gorilla/websocket"
 	"github.com/martini-contrib/gzip"
 	"github.com/martini-contrib/render"
-	"github.com/syndtr/goleveldb/leveldb"
 	"github.com/vmihailenco/msgpack"
 
 	sango "./src"
@@ -32,7 +32,7 @@ var configFile *string = flag.String("f", "/etc/sango.yml", "Specify config file
 type Sango struct {
 	*martini.ClassicMartini
 	conf   sango.Config
-	db     *leveldb.DB
+	db     redis.Conn
 	images sango.ImageList
 	reqch  chan int
 }
@@ -46,7 +46,7 @@ func NewSango(conf sango.Config) *Sango {
 		Extensions: []string{".html"},
 	}))
 
-	db, err := leveldb.OpenFile(conf.Database, nil)
+	db, err := redis.Dial("tcp", ":6379")
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -95,8 +95,9 @@ func (s *Sango) index(r render.Render) {
 
 func (s *Sango) log(r render.Render, params martini.Params) {
 	id := params["id"]
-	_, err := s.db.Get([]byte(id), nil)
-	if err != nil {
+
+	n, err := redis.Bool(s.db.Do("EXISTS", "log/" + id))
+	if err != nil || !n {
 		r.Redirect("/")
 		return
 	}
@@ -159,7 +160,7 @@ func (s *Sango) run(req io.Reader, msgch chan<- *sango.Message) (ExecResponse, i
 		if err != nil {
 			log.Print(err)
 		} else {
-			err := s.db.Put([]byte(eres.ID), data, nil)
+			_, err := s.db.Do("SET", "log/" + eres.ID, data)
 			if err != nil {
 				log.Print(err)
 			}
@@ -216,7 +217,7 @@ func (s *Sango) apiRunStreaming(res http.ResponseWriter, req *http.Request) {
 }
 
 func (s *Sango) apiLog(r render.Render, params martini.Params) {
-	data, err := s.db.Get([]byte(params["id"]), nil)
+	data, err := redis.Bytes(s.db.Do("GET", "log/" + params["id"]))
 	if err != nil {
 		log.Print(err)
 		r.JSON(404, map[string]string{"error": "Not found"})
