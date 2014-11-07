@@ -54,6 +54,30 @@ func (i *Image) GetInfo() error {
 	return nil
 }
 
+func (i *Image) GetCommand(in Input) (CommandLine, error) {
+        var c CommandLine
+	data, err := msgpack.Marshal(in)
+	if err != nil {
+	       return c, err
+	}
+
+	var stdout bytes.Buffer
+	cmd := exec.Command("docker", "run", "-i", "--net=none", i.dockerImageName(), "./run", "-c")
+	cmd.Stdin = bytes.NewBuffer(data)
+	cmd.Stdout = &stdout
+	err = cmd.Run()
+     
+	if err != nil {
+		return c, err
+	} else {
+		err := msgpack.Unmarshal(stdout.Bytes(), &c)
+		if err != nil {
+			return c, err
+		}
+	}
+	return c, nil
+}
+
 func GenerateID() string {
 	return string(base58.EncodeBig(nil, big.NewInt(0).Add(big.NewInt(0xc0ffee), big.NewInt(rand.Int63()))))
 }

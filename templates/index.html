@@ -21,6 +21,8 @@
   <h3>Stdin</h3>
   <div id="stdin-editor-div"></div>
 
+  <div id="cmdline"></div>
+
   <div id="command">
     <button id="run-bt">Run (Ctrl+Enter)</button>
     {{ range .images }}
@@ -132,6 +134,7 @@
       $options.find('input[type=checkbox]').each(function(){
         options[$(this).attr("name")] = $(this).prop('checked');
       });
+
       $options.find('select').each(function(){
         options[$(this).attr("name")] = $(this).val();
       });
@@ -199,6 +202,45 @@
     }
 
     $('#run-bt').click(run);
+			  
+    $('.options').change(reloadCommandLine);
+
+    function reloadCommandLine() {
+      var options = {};
+      $options = $('.options[data-id=' + escapeSelector(current_id) + ']');
+      $options.find('input[type=checkbox]').each(function(){
+        options[$(this).attr("name")] = $(this).prop('checked');
+      });
+
+      $options.find('select').each(function(){
+        options[$(this).attr("name")] = $(this).val();
+      });
+
+      var files = {};
+      var ext = $('#lang li[data-id=' + escapeSelector(current_id) + ']').attr('data-ext');
+      files["main." + ext] = '';
+      var data = JSON.stringify({
+        "environment": current_id,
+        "input": {
+          "files": files,
+          "options": options
+        }
+      });
+
+          $.ajax({
+            type: "POST",
+            url: '/api/cmd',
+            data: data,
+            success: function(data) {
+              if (data.build.length > 0) {
+                $('#cmdline').text(data.build);
+              } else {
+                $('#cmdline').text(data.run);
+              }
+            },
+            dataType: 'json'
+          });
+    }
 
     code_editor.commands.addCommand({
       name: "run",
@@ -282,6 +324,8 @@
         });
 
         current_id = id;
+        reloadCommandLine();
+
         if (!edited) {
           $.get('/template/' + id, {},
             function(data) {

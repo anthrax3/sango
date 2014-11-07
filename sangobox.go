@@ -100,6 +100,7 @@ func NewSango(conf sango.Config) *Sango {
 	m.Group("/api", func(r martini.Router) {
 		r.Get("/list", s.apiImageList)
 		r.Post("/run", s.apiRun)
+		r.Post("/cmd", s.apiCmd)
 		r.Get("/run/stream", s.apiRunStreaming)
 		r.Get("/log/:id", s.apiLog)
 	})
@@ -217,6 +218,32 @@ func (s *Sango) apiRun(r render.Render, res http.ResponseWriter, req *http.Reque
 		r.JSON(code, map[string]string{"error": err.Error()})
 	} else {
 		r.JSON(code, eres)
+	}
+}
+
+func (s *Sango) apiCmd(r render.Render, res http.ResponseWriter, req *http.Request) {
+	reader := io.LimitReader(req.Body, s.conf.UploadLimit)
+        d := json.NewDecoder(reader)
+        var ereq ExecRequest
+        err := d.Decode(&ereq)     
+	if err != nil {
+	       r.JSON(400, map[string]string{"error": "Bad request"})
+	       return
+	}
+
+	img, ok := s.images()[ereq.Environment]
+	if !ok {
+		r.JSON(501, map[string]string{"error": "No such environment"})
+		return
+	}
+
+	cmd, err := img.GetCommand(ereq.Input)
+	
+	if err != nil {
+	        log.Print(err)
+		r.JSON(500, map[string]string{"error": "Internal error"})
+	} else {
+		r.JSON(200, cmd)
 	}
 }
 
