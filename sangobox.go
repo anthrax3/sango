@@ -33,7 +33,7 @@ type Sango struct {
 	*martini.ClassicMartini
 	conf   sango.Config
 	db     redis.Conn
-	images sango.ImageList
+	imgch  chan sango.ImageList
 	reqch  chan int
 }
 
@@ -51,16 +51,42 @@ func NewSango(conf sango.Config) *Sango {
 		log.Fatal(err)
 	}
 
-	sango.CleanImages()
-	images := sango.MakeImageList(conf.ImageDir, false, false, false)
-
 	s := &Sango{
 		ClassicMartini: m,
 		conf:           conf,
 		db:             db,
-		images:         images,
+		imgch:          make(chan sango.ImageList),
 		reqch:          make(chan int, conf.ExecLimit),
 	}
+
+	imgdch := make(chan sango.ImageList)
+	go func() {
+		imgdch <- sango.MakeImageList(s.conf.ImageDir, false, false, false)
+	}()
+
+	go func() {
+		var images sango.ImageList
+		data, err := redis.Bytes(s.db.Do("GET", "images"))
+		if err == nil {
+			err = msgpack.Unmarshal(data, &images)
+		}
+		for {
+			select {
+				case i := <- imgdch:
+					images = i
+					data, err := msgpack.Marshal(images)
+					if err != nil {
+						log.Print(err)
+					} else {
+						_, err := s.db.Do("SET", "images", data)
+						if err != nil {
+							log.Print(err)
+						}
+					}
+				case s.imgch <- images:
+			}
+		}
+	}()
 
 	ch := time.Tick(conf.CleanInterval)
 	go func() {
@@ -86,6 +112,21 @@ func NewSango(conf sango.Config) *Sango {
 	return s
 }
 
+func (s *Sango) getImageList() sango.ImageList {
+	data, err := redis.Bytes(s.db.Do("GET", "images"))
+
+	var list sango.ImageList
+	if err == nil {
+		err = msgpack.Unmarshal(data, &list)
+		log.Print(err)
+	}
+	return list
+}
+
+func (s *Sango) images() sango.ImageList {
+	return <- s.imgch
+}
+
 func (s *Sango) index(r render.Render) {
 	r.HTML(200, "index", map[string]interface{}{
 		"ga":     s.conf.GoogleAnalytics,
@@ -109,8 +150,9 @@ func (s *Sango) log(r render.Render, params martini.Params) {
 }
 
 func (s *Sango) imageArray() []sango.Image {
-	l := make(sango.ImageArray, 0, len(s.images))
-	for _, v := range s.images {
+	images := s.images()
+	l := make(sango.ImageArray, 0, len(images))
+	for _, v := range images {
 		l = append(l, v)
 	}
 	sort.Sort(l)
@@ -137,7 +179,7 @@ func (s *Sango) run(req io.Reader, msgch chan<- *sango.Message) (ExecResponse, i
 	if len(ereq.Input.Files) == 0 {
 		return ExecResponse{}, 400, errors.New("No input files")
 	}
-	img, ok := s.images[ereq.Environment]
+	img, ok := s.images()[ereq.Environment]
 	if !ok {
 		return ExecResponse{}, 501, errors.New("No such environment")
 	}
@@ -235,7 +277,7 @@ func (s *Sango) apiLog(r render.Render, params martini.Params) {
 
 func (s *Sango) template(res http.ResponseWriter, params martini.Params) {
 	env := params["env"]
-	img, ok := s.images[env]
+	img, ok := s.images()[env]
 	res.Header()["Content-Type"] = []string{"text/plain"}
 	if !ok {
 		res.WriteHeader(404)
@@ -247,7 +289,7 @@ func (s *Sango) template(res http.ResponseWriter, params martini.Params) {
 
 func (s *Sango) hello(res http.ResponseWriter, params martini.Params) {
 	env := params["env"]
-	img, ok := s.images[env]
+	img, ok := s.images()[env]
 	res.Header()["Content-Type"] = []string{"text/plain"}
 	if !ok {
 		res.WriteHeader(404)
