@@ -17,9 +17,8 @@ RUN go get -d .
 RUN make
 
 ENV LOG file
-RUN echo "/usr/local/bin/wrapdocker; sleep 1; eval $@;" > start.sh
 RUN chmod +x ./start.sh
  
-ENTRYPOINT ./start.sh
+ENTRYPOINT ["/sango/start.sh"]
  
 EXPOSE 3000
