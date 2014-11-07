@@ -109,17 +109,21 @@ type Input struct {
 }
 
 type Output struct {
-	BuildStdout  string    `json:"build-stdout"`
-	BuildStderr  string    `json:"build-stderr"`
-	RunStdout    string    `json:"run-stdout"`
-	RunStderr    string    `json:"run-stderr"`
-	MixedOutput  []Message `json:"mixed-output"`
-	BuildCommand string    `json:"build-command"`
-	RunCommand   string    `json:"run-command"`
-	Code         int       `json:"code"`
-	Signal       int       `json:"signal"`
-	Status       string    `json:"status"`
-	RunningTime  float64   `json:"running-time"`
+	BuildStdout string      `json:"build-stdout"`
+	BuildStderr string      `json:"build-stderr"`
+	RunStdout   string      `json:"run-stdout"`
+	RunStderr   string      `json:"run-stderr"`
+	MixedOutput []Message   `json:"mixed-output"`
+	Command     CommandLine `json:"command"`
+	Code        int         `json:"code"`
+	Signal      int         `json:"signal"`
+	Status      string      `json:"status"`
+	RunningTime float64     `json:"running-time"`
+}
+
+type CommandLine struct {
+	Build string `json:"build"`
+	Run   string `json:"run"`
 }
 
 type TimeoutError struct{}

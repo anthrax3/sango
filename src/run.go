@@ -27,8 +27,9 @@ type agent struct {
 }
 
 func Run(buildCmd, runCmd CmdHandler, verCmd VersionHandler) {
-	var version bool
+	var version, command bool
 	flag.BoolVar(&version, "v", false, "")
+	flag.BoolVar(&command, "c", false, "")
 	flag.Parse()
 
 	if version {
@@ -70,6 +71,24 @@ func Run(buildCmd, runCmd CmdHandler, verCmd VersionHandler) {
 		files = append(files, k)
 	}
 
+	if command {
+		var c CommandLine
+		if buildCmd != nil {
+			var out Output
+			cmd, args := buildCmd(files, in, &out)
+			c.Build = strings.Join(append([]string{cmd}, args...), " ")
+		}
+		if runCmd != nil {
+			var out Output
+			cmd, args := runCmd(files, in, &out)
+			c.Run = strings.Join(append([]string{cmd}, args...), " ")
+		}
+		e := msgpack.NewEncoder(os.Stdout)
+		e.Encode(c)
+		os.Stdout.Close()
+		return
+	}
+
 	a := agent{
 		in:       in,
 		files:    files,
@@ -109,7 +128,7 @@ func (a *agent) build() error {
 	}
 
 	cmd, args := a.buildCmd(a.files, a.in, &a.out)
-	a.out.BuildCommand = strings.Join(append([]string{cmd}, args...), " ")
+	a.out.Command.Build = strings.Join(append([]string{cmd}, args...), " ")
 	var stdout, stderr bytes.Buffer
 	msgStdout := MsgpackFilter{Writer: os.Stderr, Tag: "build-stdout"}
 	msgStderr := MsgpackFilter{Writer: os.Stderr, Tag: "build-stderr"}
@@ -135,7 +154,7 @@ func (a *agent) run() error {
 	}
 
 	cmd, args := a.runCmd(a.files, a.in, &a.out)
-	a.out.RunCommand = strings.Join(append([]string{cmd}, args...), " ")
+	a.out.Command.Run = strings.Join(append([]string{cmd}, args...), " ")
 	var stdout, stderr bytes.Buffer
 	msgStdout := MsgpackFilter{Writer: os.Stderr, Tag: "run-stdout"}
 	msgStderr := MsgpackFilter{Writer: os.Stderr, Tag: "run-stderr"}
