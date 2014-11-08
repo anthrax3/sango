@@ -69,7 +69,7 @@ func NewSango(conf sango.Config) *Sango {
 
 	imgdch := make(chan sango.ImageList)
 	go func() {
-		imgdch <- sango.MakeImageList(s.conf.ImageDir, false, false, false)
+		imgdch <- sango.MakeImageList(s.conf.ImageDir, false)
 	}()
 
 	go func() {
@@ -233,7 +233,7 @@ func (s *Sango) apiCmd(r render.Render, res http.ResponseWriter, req *http.Reque
 	reader := io.LimitReader(req.Body, s.conf.UploadLimit)
         d := json.NewDecoder(reader)
         var ereq ExecRequest
-        err := d.Decode(&ereq)     
+        err := d.Decode(&ereq)
 	if err != nil {
 	       r.JSON(400, map[string]string{"error": "Bad request"})
 	       return
@@ -246,7 +246,7 @@ func (s *Sango) apiCmd(r render.Render, res http.ResponseWriter, req *http.Reque
 	}
 
 	cmd, err := img.GetCommand(ereq.Input)
-	
+
 	if err != nil {
 	        log.Print(err)
 		r.JSON(500, map[string]string{"error": "Internal error"})

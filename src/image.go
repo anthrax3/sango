@@ -3,19 +3,17 @@ package sango
 import (
 	"bytes"
 	"io"
-	"io/ioutil"
 	"log"
 	"math/big"
 	"math/rand"
 	"os"
 	"os/exec"
-	"path/filepath"
+	"regexp"
 	"strings"
 	"time"
 
 	"github.com/tv42/base58"
 	"github.com/vmihailenco/msgpack"
-	"gopkg.in/yaml.v2"
 )
 
 const dockerAddr = "/var/run/docker.sock"
@@ -55,10 +53,10 @@ func (i *Image) GetInfo() error {
 }
 
 func (i *Image) GetCommand(in Input) (CommandLine, error) {
-        var c CommandLine
+	var c CommandLine
 	data, err := msgpack.Marshal(in)
 	if err != nil {
-	       return c, err
+		return c, err
 	}
 
 	var stdout bytes.Buffer
@@ -66,7 +64,7 @@ func (i *Image) GetCommand(in Input) (CommandLine, error) {
 	cmd.Stdin = bytes.NewBuffer(data)
 	cmd.Stdout = &stdout
 	err = cmd.Run()
-     
+
 	if err != nil {
 		return c, err
 	} else {
@@ -173,69 +171,6 @@ func (i Image) Exec(in Input, msgch chan<- *Message) (Output, error) {
 	return out, nil
 }
 
-func (i Image) exists() bool {
-	cmd := exec.Command("docker", "inspect", i.dockerImageName())
-	err := cmd.Run()
-	return err == nil
-}
-
-func buildImage(dir, image string, nocache bool) error {
-	pwd, err := os.Getwd()
-	if err != nil {
-		return err
-	}
-	err = os.Chdir(dir)
-	if err != nil {
-		return err
-	}
-
-	cmd := exec.Command("go", "build", "-o", "run", "run.go")
-	cmd.Stdout = os.Stdout
-	cmd.Stderr = os.Stderr
-	err = cmd.Run()
-	if err != nil {
-		return err
-	}
-
-	nc := "--no-cache="
-	if nocache {
-		nc += "true"
-	} else {
-		nc += "false"
-	}
-
-	cmd = exec.Command("docker", "build", nc, "-t", image, ".")
-	cmd.Stdout = os.Stdout
-	cmd.Stderr = os.Stderr
-	err = cmd.Run()
-	if err != nil {
-		return err
-	}
-
-	err = os.Remove("run")
-	if err != nil {
-		return err
-	}
-
-	err = os.Chdir(pwd)
-	if err != nil {
-		return err
-	}
-
-	return nil
-}
-
-func pullImage(image string) error {
-	cmd := exec.Command("docker", "pull", image)
-	cmd.Stdout = os.Stdout
-	cmd.Stderr = os.Stderr
-	err := cmd.Run()
-	if err != nil {
-		return err
-	}
-	return nil
-}
-
 func CleanImages() error {
 	var stdout bytes.Buffer
 	cmd := exec.Command("docker", "ps", "-a", "-q")
@@ -256,79 +191,57 @@ func CleanImages() error {
 	return nil
 }
 
+func pullImage(image string) error {
+	cmd := exec.Command("docker", "pull", image)
+	cmd.Stdout = os.Stdout
+	cmd.Stderr = os.Stderr
+	err := cmd.Run()
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
+var idRegexp = regexp.MustCompile("^" + regexp.QuoteMeta(imagePrefix) + "[^_].+? ")
+
+func images() []string {
+	var stdout bytes.Buffer
+	cmd := exec.Command("docker", "images")
+	cmd.Stdout = &stdout
+	err := cmd.Run()
+	if err != nil {
+		log.Print(err)
+		return nil
+	}
+	var i []string
+	for _, l := range strings.Split(stdout.String(), "\n") {
+		id := strings.Trim(strings.Replace(string(idRegexp.Find([]byte(l))), imagePrefix, "", -1), " ")
+		if len(id) > 0 {
+			i = append(i, id)
+		}
+	}
+	return i
+}
+
 type ImageList map[string]Image
 
-func MakeImageList(langpath string, pull, build, nocache bool) ImageList {
+func MakeImageList(langpath string, pull bool) ImageList {
 	l := make(ImageList)
 
-	info, err := os.Stat(langpath)
-	if err != nil {
-		log.Print(err)
-		return nil
-	}
-
-	if !info.IsDir() {
-		log.Print("%s is not a directory", langpath)
-		return nil
-	}
-
-	files, err := ioutil.ReadDir(langpath)
-	if err != nil {
-		log.Print(err)
-		return nil
-	}
-
-	w, err := os.Getwd()
-	if err != nil {
-		log.Print(err)
-		return nil
-	}
-
-	for _, f := range files {
-		err = os.Chdir(w)
-		if err != nil {
-			log.Print(w)
-			continue
-		}
-		d := filepath.Join(langpath, f.Name())
-		c := filepath.Join(d, "config.yml")
-		data, err := ioutil.ReadFile(c)
-		if err != nil {
-			log.Print(w)
-			continue
-		}
-		var img Image
-		err = yaml.Unmarshal(data, &img)
-		if err != nil {
-			log.Print(c, err)
-		} else {
-			if pull && !build {
-				err := pullImage(img.dockerImageName())
-				if err != nil {
-					log.Print(err)
-				}
-			}
-			if build {
-				log.Printf("Found config: %s [%s]", img.ID, img.dockerImageName())
-				log.Printf("Building image...")
-				err = buildImage(d, img.dockerImageName(), nocache)
-			} else {
-				if !img.exists() {
-					log.Printf("Image not found: %s", img.dockerImageName())
-					continue
-				}
-			}
+	for _, i := range images() {
+		img := Image{ID: i}
+		if pull {
+			err := pullImage(img.dockerImageName())
 			if err != nil {
-				log.Printf("Filed to build image: %v", err)
-			} else {
-				err := img.GetInfo()
-				if err != nil {
-					log.Printf("Filed to get version: %v", err)
-				} else {
-					log.Printf("Get version: %s (%s)", img.Language, img.Version)
-					l[img.ID] = img
-				}
+				log.Print(err)
 			}
+		}
+		err := img.GetInfo()
+		if err != nil {
+			log.Printf("Filed to get version: %v", err)
+		} else {
+			log.Printf("Get version: %s (%s)", img.Language, img.Version)
+			l[img.ID] = img
 		}
 	}
 

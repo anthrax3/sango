@@ -202,7 +202,7 @@
     }
 
     $('#run-bt').click(run);
-			  
+
     $('.options').change(reloadCommandLine);
 
     function reloadCommandLine() {
@@ -277,7 +277,7 @@
         'json');
     } else {
       var last = localStorage["last_id"];
-      if (!selectLang(last, true)) {
+      if (last == undefined || !selectLang(last, true)) {
         selectLang('go-latest', true);
       }
     }
