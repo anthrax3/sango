@@ -1,6 +1,7 @@
 package main
 
 import (
+	"crypto/md5"
 	"encoding/json"
 	"errors"
 	"flag"
@@ -28,13 +29,14 @@ import (
 
 var sangoPath string
 var configFile *string = flag.String("f", "/etc/sango.yml", "Specify config file")
+var cmdCacheSeconds = 60 * 60
 
 type Sango struct {
 	*martini.ClassicMartini
-	conf   sango.Config
-	db     redis.Conn
-	imgch  chan sango.ImageList
-	reqch  chan int
+	conf  sango.Config
+	db    redis.Conn
+	imgch chan sango.ImageList
+	reqch chan int
 }
 
 func NewSango(conf sango.Config) *Sango {
@@ -51,7 +53,7 @@ func NewSango(conf sango.Config) *Sango {
 
 	addr := ":6379"
 	if len(eaddr) > 0 && len(eport) > 0 {
-	   addr = eaddr + ":" + eport
+		addr = eaddr + ":" + eport
 	}
 
 	db, err := redis.Dial("tcp", addr)
@@ -87,18 +89,18 @@ func NewSango(conf sango.Config) *Sango {
 		}
 		for {
 			select {
-				case i := <- imgdch:
-					images = i
-					data, err := msgpack.Marshal(images)
+			case i := <-imgdch:
+				images = i
+				data, err := msgpack.Marshal(images)
+				if err != nil {
+					log.Print(err)
+				} else {
+					_, err := s.db.Do("SET", "images", data)
 					if err != nil {
 						log.Print(err)
-					} else {
-						_, err := s.db.Do("SET", "images", data)
-						if err != nil {
-							log.Print(err)
-						}
 					}
-				case s.imgch <- images:
+				}
+			case s.imgch <- images:
 			}
 		}
 	}()
@@ -140,7 +142,7 @@ func (s *Sango) getImageList() sango.ImageList {
 }
 
 func (s *Sango) images() sango.ImageList {
-	return <- s.imgch
+	return <-s.imgch
 }
 
 func (s *Sango) index(r render.Render) {
@@ -153,7 +155,7 @@ func (s *Sango) index(r render.Render) {
 func (s *Sango) log(r render.Render, params martini.Params) {
 	id := params["id"]
 
-	n, err := redis.Bool(s.db.Do("EXISTS", "log/" + id))
+	n, err := redis.Bool(s.db.Do("EXISTS", "log/"+id))
 	if err != nil || !n {
 		r.Redirect("/")
 		return
@@ -218,7 +220,7 @@ func (s *Sango) run(req io.Reader, msgch chan<- *sango.Message) (ExecResponse, i
 		if err != nil {
 			log.Print(err)
 		} else {
-			_, err := s.db.Do("SET", "log/" + eres.ID, data)
+			_, err := s.db.Do("SET", "log/"+eres.ID, data)
 			if err != nil {
 				log.Print(err)
 			}
@@ -236,27 +238,64 @@ func (s *Sango) apiRun(r render.Render, res http.ResponseWriter, req *http.Reque
 	}
 }
 
-func (s *Sango) apiCmd(r render.Render, res http.ResponseWriter, req *http.Request) {
-	reader := io.LimitReader(req.Body, s.conf.UploadLimit)
-        d := json.NewDecoder(reader)
-        var ereq ExecRequest
-        err := d.Decode(&ereq)
+func (s *Sango) getCmd(req ExecRequest) (sango.CommandLine, int, error) {
+	var c sango.CommandLine
+	data, err := msgpack.Marshal(req)
 	if err != nil {
-	       r.JSON(400, map[string]string{"error": "Bad request"})
-	       return
+		return c, 500, errors.New("Internal error")
 	}
 
-	img, ok := s.images()[ereq.Environment]
+	id := md5.Sum(data)
+	data, err = redis.Bytes(s.db.Do("GET", "cache/cmd/"+string(id[:])))
+	if err == nil {
+		err := msgpack.Unmarshal(data, &c)
+		if err != nil {
+			log.Print(err)
+		} else {
+			return c, 200, nil
+		}
+	}
+
+	img, ok := s.images()[req.Environment]
 	if !ok {
-		r.JSON(501, map[string]string{"error": "No such environment"})
+		return c, 501, errors.New("No such environment")
+	}
+
+	cmd, err := img.GetCommand(req.Input)
+	if err != nil {
+		return c, 500, errors.New("Internal error")
+	}
+
+	c = cmd
+
+	data, err = msgpack.Marshal(c)
+	if err != nil {
+		log.Print(err)
+	} else {
+		_, err := s.db.Do("SETEX", "cache/cmd/"+string(id[:]), cmdCacheSeconds, data)
+		if err != nil {
+			log.Print(err)
+		}
+	}
+
+	return c, 200, nil
+}
+
+func (s *Sango) apiCmd(r render.Render, res http.ResponseWriter, req *http.Request) {
+	reader := io.LimitReader(req.Body, s.conf.UploadLimit)
+	d := json.NewDecoder(reader)
+	var ereq ExecRequest
+	err := d.Decode(&ereq)
+
+	if err != nil {
+		r.JSON(400, map[string]string{"error": "Bad request"})
 		return
 	}
 
-	cmd, err := img.GetCommand(ereq.Input)
+	cmd, code, err := s.getCmd(ereq)
 
 	if err != nil {
-	        log.Print(err)
-		r.JSON(500, map[string]string{"error": "Internal error"})
+		r.JSON(code, map[string]string{"error": err.Error()})
 	} else {
 		r.JSON(200, cmd)
 	}
@@ -301,7 +340,7 @@ func (s *Sango) apiRunStreaming(res http.ResponseWriter, req *http.Request) {
 }
 
 func (s *Sango) apiLog(r render.Render, params martini.Params) {
-	data, err := redis.Bytes(s.db.Do("GET", "log/" + params["id"]))
+	data, err := redis.Bytes(s.db.Do("GET", "log/"+params["id"]))
 	if err != nil {
 		log.Print(err)
 		r.JSON(404, map[string]string{"error": "Not found"})
