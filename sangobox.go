@@ -69,7 +69,14 @@ func NewSango(conf sango.Config) *Sango {
 
 	imgdch := make(chan sango.ImageList)
 	go func() {
-		imgdch <- sango.MakeImageList(s.conf.ImageDir, false)
+		tick := time.Tick(1 * time.Hour)
+		for {
+			images, err := sango.MakeImageList(s.conf.ImageDir, false)
+			if err != nil {
+				imgdch <- images
+			}
+			<-tick
+		}
 	}()
 
 	go func() {

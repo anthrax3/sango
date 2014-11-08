@@ -204,14 +204,13 @@ func pullImage(image string) error {
 
 var idRegexp = regexp.MustCompile("^" + regexp.QuoteMeta(imagePrefix) + "[^_].+? ")
 
-func images() []string {
+func images() ([]string, error) {
 	var stdout bytes.Buffer
 	cmd := exec.Command("docker", "images")
 	cmd.Stdout = &stdout
 	err := cmd.Run()
 	if err != nil {
-		log.Print(err)
-		return nil
+		return nil, err
 	}
 	var i []string
 	for _, l := range strings.Split(stdout.String(), "\n") {
@@ -220,15 +219,20 @@ func images() []string {
 			i = append(i, id)
 		}
 	}
-	return i
+	return i, nil
 }
 
 type ImageList map[string]Image
 
-func MakeImageList(langpath string, pull bool) ImageList {
+func MakeImageList(langpath string, pull bool) (ImageList, error) {
 	l := make(ImageList)
+	images, err := images()
 
-	for _, i := range images() {
+	if err != nil {
+		return nil, err
+	}
+
+	for _, i := range images {
 		img := Image{ID: i}
 		if pull {
 			err := pullImage(img.dockerImageName())
@@ -245,7 +249,7 @@ func MakeImageList(langpath string, pull bool) ImageList {
 		}
 	}
 
-	return l
+	return l, nil
 }
 
 type ImageArray []Image
