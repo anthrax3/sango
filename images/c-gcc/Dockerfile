@@ -1,4 +1,4 @@
-FROM sango/base
+FROM sango/_base
 
 ADD . /home/sango/
 

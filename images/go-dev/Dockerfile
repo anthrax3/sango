@@ -1,4 +1,4 @@
-FROM sango/base
+FROM sango/_base
 
 RUN hg clone -u default https://code.google.com/p/go
 WORKDIR /go/src

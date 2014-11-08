@@ -1,4 +1,4 @@
-FROM sango/base
+FROM sango/_base
 
 RUN apt-get install -y gobjc++ libgnustep-base-dev gnustep-make gnustep gnustep-devel
 
