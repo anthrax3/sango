@@ -74,8 +74,10 @@ func NewSango(conf sango.Config) *Sango {
 		tick := time.Tick(1 * time.Hour)
 		for {
 			images, err := sango.MakeImageList(s.conf.ImageDir, false)
-			if err != nil {
+			if err == nil {
 				imgdch <- images
+			} else {
+			       log.Print(err)
 			}
 			<-tick
 		}
