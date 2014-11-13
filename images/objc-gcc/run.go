@@ -44,5 +44,9 @@ func version() string {
 }
 
 func main() {
-	sango.Run(build, run, version)
+	sango.Run(sango.AgentOption{
+		BuildCmd: build,
+		RunCmd: run,
+		VerCmd: version,
+	})
 }

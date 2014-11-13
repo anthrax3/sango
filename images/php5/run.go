@@ -21,5 +21,8 @@ func version() string {
 }
 
 func main() {
-	sango.Run(nil, run, version)
+	sango.Run(sango.AgentOption{
+		RunCmd: run,
+		VerCmd: version,
+	})
 }

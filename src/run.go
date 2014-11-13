@@ -17,6 +17,7 @@ import (
 
 type VersionHandler func() string
 type CmdHandler func([]string, Input, *Output) (string, []string)
+type TestHandler func() (map[string]string, string, string)
 
 type agent struct {
 	in       Input
@@ -26,7 +27,13 @@ type agent struct {
 	runCmd   CmdHandler
 }
 
-func Run(buildCmd, runCmd CmdHandler, verCmd VersionHandler) {
+type AgentOption struct {
+	BuildCmd, RunCmd CmdHandler
+	VerCmd           VersionHandler
+	Test             TestHandler
+}
+
+func Run(opt AgentOption) {
 	var version, command bool
 	flag.BoolVar(&version, "v", false, "")
 	flag.BoolVar(&command, "c", false, "")
@@ -49,7 +56,7 @@ func Run(buildCmd, runCmd CmdHandler, verCmd VersionHandler) {
 		data, _ = ioutil.ReadFile("hello.txt")
 		img.HelloWorld = string(data)
 
-		ver := strings.Trim(verCmd(), "\r\n ")
+		ver := strings.Trim(opt.VerCmd(), "\r\n ")
 		img.Version = ver
 
 		e := msgpack.NewEncoder(os.Stdout)
@@ -73,14 +80,14 @@ func Run(buildCmd, runCmd CmdHandler, verCmd VersionHandler) {
 
 	if command {
 		var c CommandLine
-		if buildCmd != nil {
+		if opt.BuildCmd != nil {
 			var out Output
-			cmd, args := buildCmd(files, in, &out)
+			cmd, args := opt.BuildCmd(files, in, &out)
 			c.Build = strings.Join(append([]string{cmd}, args...), " ")
 		}
-		if runCmd != nil {
+		if opt.RunCmd != nil {
 			var out Output
-			cmd, args := runCmd(files, in, &out)
+			cmd, args := opt.RunCmd(files, in, &out)
 			c.Run = strings.Join(append([]string{cmd}, args...), " ")
 		}
 		e := msgpack.NewEncoder(os.Stdout)
@@ -92,8 +99,8 @@ func Run(buildCmd, runCmd CmdHandler, verCmd VersionHandler) {
 	a := agent{
 		in:       in,
 		files:    files,
-		buildCmd: buildCmd,
-		runCmd:   runCmd,
+		buildCmd: opt.BuildCmd,
+		runCmd:   opt.RunCmd,
 	}
 
 	err = a.build()
