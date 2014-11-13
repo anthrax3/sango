@@ -32,10 +32,15 @@ func version() string {
 	return v
 }
 
+func test() ([]string, string, string) {
+	return []string{"test/hello.go"}, "", "Hello World"
+}
+
 func main() {
 	sango.Run(sango.AgentOption{
 		BuildCmd: build,
 		RunCmd: run,
 		VerCmd: version,
+		Test: test,
 	})
 }

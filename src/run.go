@@ -6,6 +6,7 @@ import (
 	"flag"
 	"io"
 	"io/ioutil"
+	"log"
 	"os"
 	"os/exec"
 	"strings"
@@ -17,7 +18,7 @@ import (
 
 type VersionHandler func() string
 type CmdHandler func([]string, Input, *Output) (string, []string)
-type TestHandler func() (map[string]string, string, string)
+type TestHandler func() ([]string, string, string)
 
 type agent struct {
 	in       Input
@@ -34,9 +35,10 @@ type AgentOption struct {
 }
 
 func Run(opt AgentOption) {
-	var version, command bool
+	var version, command, test bool
 	flag.BoolVar(&version, "v", false, "")
 	flag.BoolVar(&command, "c", false, "")
+	flag.BoolVar(&test, "t", false, "")
 	flag.Parse()
 
 	if version {
@@ -62,6 +64,31 @@ func Run(opt AgentOption) {
 		e := msgpack.NewEncoder(os.Stdout)
 		e.Encode(img)
 		os.Stdout.Close()
+		return
+	}
+
+	if test {
+		if opt.Test != nil {
+			files, stdin, stdout := opt.Test()
+			a := agent{
+				in:       Input{Stdin: stdin},
+				files:    files,
+				buildCmd: opt.BuildCmd,
+				runCmd:   opt.RunCmd,
+			}
+
+			err := a.build()
+			if err == nil {
+				err = a.run()
+			}
+			if err != nil {
+				log.Fatal(err)
+			}
+
+			if a.out.RunStdout != stdout {
+				log.Fatalf("stdout should be %s; got %s", stdout, a.out.RunStdout)
+			}
+		}
 		return
 	}
 
