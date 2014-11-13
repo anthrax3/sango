@@ -13,6 +13,8 @@ WORKDIR /go/src
 RUN rm -v **/**/pprof_test.go
 RUN ./all.bash
 ENV PATH /go/bin:$PATH
+ENV GOROOT /go
+ENV GOPATH /gosrc
 
 WORKDIR /home/sango
 USER sango
