@@ -24,7 +24,7 @@ import (
 	"github.com/martini-contrib/render"
 	"github.com/vmihailenco/msgpack"
 
-	sango "./src"
+	"github.com/h2so5/sango/src"
 )
 
 var sangoPath string

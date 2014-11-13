@@ -1,6 +1,6 @@
 package main
 
-import"../../src"
+import"github.com/h2so5/sango/src"
 
 func run(files []string, in sango.Input, out *sango.Output) (string, []string) {
 	return "mruby", files

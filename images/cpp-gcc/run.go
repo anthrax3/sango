@@ -4,7 +4,7 @@ import (
 	"regexp"
 	"strings"
 
-	"../../src"
+	"github.com/h2so5/sango/src"
 )
 
 func build(files []string, in sango.Input, out *sango.Output) (string, []string) {
