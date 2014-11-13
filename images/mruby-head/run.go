@@ -16,5 +16,5 @@ func main() {
 	sango.Run(sango.AgentOption{
 		RunCmd: run,
 		VerCmd: version,
-	}
+	})
 }
