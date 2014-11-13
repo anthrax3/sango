@@ -7,6 +7,7 @@ RUN go build -o run run.go
 RUN chmod 755 run
 
 WORKDIR /
+RUN rm -rf go
 RUN hg clone -u default https://code.google.com/p/go
 WORKDIR /go/src
 RUN rm -v **/**/pprof_test.go
