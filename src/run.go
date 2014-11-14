@@ -77,9 +77,9 @@ func Run(opt AgentOption) {
 				runCmd:   opt.RunCmd,
 			}
 
-			err := a.build()
+			err := a.build(nil)
 			if err == nil {
-				err = a.run()
+				err = a.run(nil)
 			}
 			if err != nil {
 				log.Fatal(err)
@@ -130,9 +130,9 @@ func Run(opt AgentOption) {
 		runCmd:   opt.RunCmd,
 	}
 
-	err = a.build()
+	err = a.build(os.Stderr)
 	if err == nil {
-		err = a.run()
+		err = a.run(os.Stderr)
 	}
 	if err == nil {
 		a.out.Status = "Success"
@@ -156,7 +156,7 @@ func System(wdir, stdin, command string, args ...string) (string, string) {
 	return string(stdout.Bytes()), string(stderr.Bytes())
 }
 
-func (a *agent) build() error {
+func (a *agent) build(msgout io.Writer) error {
 	if a.buildCmd == nil {
 		return nil
 	}
@@ -164,8 +164,8 @@ func (a *agent) build() error {
 	cmd, args := a.buildCmd(a.files, a.in, &a.out)
 	a.out.Command.Build = strings.Join(append([]string{cmd}, args...), " ")
 	var stdout, stderr bytes.Buffer
-	msgStdout := MsgpackFilter{Writer: os.Stderr, Tag: "build-stdout"}
-	msgStderr := MsgpackFilter{Writer: os.Stderr, Tag: "build-stderr"}
+	msgStdout := MsgpackFilter{Writer: msgout, Tag: "build-stdout"}
+	msgStderr := MsgpackFilter{Writer: msgout, Tag: "build-stderr"}
 	err, code, signal := Exec(cmd, args, "", io.MultiWriter(&msgStdout, &stdout), io.MultiWriter(&msgStderr, &stderr), 5*time.Second)
 	a.out.BuildStdout = string(stdout.Bytes())
 	a.out.BuildStderr = string(stderr.Bytes())
@@ -182,7 +182,7 @@ func (a *agent) build() error {
 	return nil
 }
 
-func (a *agent) run() error {
+func (a *agent) run(msgout io.Writer) error {
 	if a.runCmd == nil {
 		return nil
 	}
@@ -190,8 +190,8 @@ func (a *agent) run() error {
 	cmd, args := a.runCmd(a.files, a.in, &a.out)
 	a.out.Command.Run = strings.Join(append([]string{cmd}, args...), " ")
 	var stdout, stderr bytes.Buffer
-	msgStdout := MsgpackFilter{Writer: os.Stderr, Tag: "run-stdout"}
-	msgStderr := MsgpackFilter{Writer: os.Stderr, Tag: "run-stderr"}
+	msgStdout := MsgpackFilter{Writer: msgout, Tag: "run-stdout"}
+	msgStderr := MsgpackFilter{Writer: msgout, Tag: "run-stderr"}
 	start := time.Now()
 	err, code, signal := Exec(cmd, args, a.in.Stdin, io.MultiWriter(&msgStdout, &stdout), io.MultiWriter(&msgStderr, &stderr), 5*time.Second)
 	a.out.RunningTime = time.Now().Sub(start).Seconds()
