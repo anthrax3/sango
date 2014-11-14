@@ -2,10 +2,12 @@ package sango
 
 import (
 	"bytes"
+	"encoding/json"
 	"io"
 	"log"
 	"math/big"
 	"math/rand"
+	"net/http"
 	"os"
 	"os/exec"
 	"regexp"
@@ -18,6 +20,7 @@ import (
 
 const dockerAddr = "/var/run/docker.sock"
 const imagePrefix = "sango/"
+const hubImageListEndpoint = "https://index.docker.io/v1/search?q=" + imagePrefix
 
 type Image struct {
 	ID         string            `yaml:"id"         json:"id"`
@@ -202,6 +205,33 @@ func pullImage(image string) error {
 	return nil
 }
 
+type HubImageList struct {
+	Results []struct {
+		Name string `json:"name"`
+	} `json:"results"`
+}
+
+func getHubImages() ([]string, error) {
+	resp, err := http.Get(hubImageListEndpoint)
+	if err != nil {
+		return nil, err
+	}
+	var h HubImageList
+	j := json.NewDecoder(resp.Body)
+	err = j.Decode(&h)
+	if err != nil {
+		return nil, err
+	}
+	var l []string
+	for _, n := range h.Results {
+		name := strings.Replace(n.Name, imagePrefix, "", 1)
+		if !strings.HasPrefix(name, "_") {
+			l = append(l, name)
+		}
+	}
+	return l, nil
+}
+
 var idRegexp = regexp.MustCompile("^" + regexp.QuoteMeta(imagePrefix) + "[^_].+? ")
 
 func images() ([]string, error) {
@@ -226,13 +256,27 @@ type ImageList map[string]Image
 
 func MakeImageList(langpath string, pull bool) (ImageList, error) {
 	l := make(ImageList)
-	images, err := images()
+
+	var imgs []string
+	var err error
+	if pull {
+		imgs, err = getHubImages()
+		if err != nil {
+			log.Print("Filed to get image list from the hub: %v", err)
+		} else {
+			log.Print("Get image list from the hub")
+		}
+	}
+
+	if !pull || err != nil {
+		imgs, err = images()
+	}
 
 	if err != nil {
 		return nil, err
 	}
 
-	for _, i := range images {
+	for _, i := range imgs {
 		img := Image{ID: i}
 		if pull {
 			err := pullImage(img.dockerImageName())
