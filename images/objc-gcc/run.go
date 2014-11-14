@@ -14,7 +14,7 @@ func build(files []string, in sango.Input, out *sango.Output) (string, []string)
 		"-fconstant-string-class=NSConstantString",
 	}
 
-        v, _ := sango.System(".", "", "gnustep-config", "--objc-flags")
+	v, _ := sango.System(".", "", "gnustep-config", "--objc-flags")
 	v = strings.Replace(v, " -I/root/GNUstep/Library/Headers", "", -1)
 	v = strings.Replace(v, "\n", "", -1)
 	args = append(args, strings.Split(v, " ")...)
@@ -43,10 +43,14 @@ func version() string {
 	return v
 }
 
+func test() ([]string, string, string) {
+	return []string{"test/hello.m"}, "", "Hello World"
+}
+
 func main() {
 	sango.Run(sango.AgentOption{
 		BuildCmd: build,
-		RunCmd: run,
-		VerCmd: version,
+		RunCmd:   run,
+		VerCmd:   version,
 	})
 }

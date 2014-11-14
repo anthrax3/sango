@@ -35,15 +35,20 @@ func version() string {
 	_, v := sango.System(".", "", "clang++", "-v")
 	l := strings.Split(v, "\n")
 	v = l[0]
-        v = string(r.ReplaceAll([]byte(v), []byte("")))
-        v = strings.Replace(v, "Ubuntu", "", -1)
+	v = string(r.ReplaceAll([]byte(v), []byte("")))
+	v = strings.Replace(v, "Ubuntu", "", -1)
 	return v
+}
+
+func test() ([]string, string, string) {
+	return []string{"test/hello.cpp"}, "", "Hello World"
 }
 
 func main() {
 	sango.Run(sango.AgentOption{
 		BuildCmd: build,
-		RunCmd: run,
-		VerCmd: version,
+		RunCmd:   run,
+		VerCmd:   version,
+		Test:     test,
 	})
 }

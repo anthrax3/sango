@@ -20,9 +20,14 @@ func version() string {
 	return v
 }
 
+func test() ([]string, string, string) {
+	return []string{"test/hello.php"}, "", "Hello World"
+}
+
 func main() {
 	sango.Run(sango.AgentOption{
 		RunCmd: run,
 		VerCmd: version,
+		Test:   test,
 	})
 }
