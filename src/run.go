@@ -77,9 +77,10 @@ func Run(opt AgentOption) {
 				runCmd:   opt.RunCmd,
 			}
 
-			err := a.build(nil)
+			var stderr bytes.Buffer
+			err := a.build(&stderr)
 			if err == nil {
-				err = a.run(nil)
+				err = a.run(&stderr)
 			}
 			if err != nil {
 				log.Fatal(err)

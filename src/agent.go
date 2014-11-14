@@ -18,9 +18,6 @@ type MsgpackFilter struct {
 }
 
 func (j *MsgpackFilter) Write(p []byte) (n int, err error) {
-	if j.Writer == nil {
-		return
-	}
 	v := Message{
 		Tag:  j.Tag,
 		Data: string(p),
