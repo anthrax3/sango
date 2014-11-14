@@ -33,7 +33,7 @@ func version() string {
 }
 
 func test() ([]string, string, string) {
-	return []string{"test/hello.cpp"}, "", "Hello World"
+	return []string{"test/hello.go"}, "", "Hello World"
 }
 
 func main() {
