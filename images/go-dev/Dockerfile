@@ -17,4 +17,5 @@ ENV GOROOT /go
 ENV GOPATH /gosrc
 
 WORKDIR /home/sango
+RUN ./run -t
 USER sango
