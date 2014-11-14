@@ -1,0 +1,24 @@
+FROM sango/_base
+
+RUN mkdir /qt
+WORKDIR /qt
+RUN curl -L -O http://download.qt-project.org/official_releases/qt/5.3/5.3.2/single/qt-everywhere-opensource-src-5.3.2.tar.xz
+RUN tar Jxf qt-everywhere-opensource-src-5.3.2.tar.xz
+RUN rm qt-everywhere-opensource-src-5.3.2.tar.xz
+WORKDIR /qt/qt-everywhere-opensource-src-5.3.2
+RUN ./configure -opensource -confirm-license -no-xcb
+RUN make -j4
+RUN make install
+ENV PATH /usr/local/Qt-5.3.2/bin:$PATH
+
+ADD . /home/sango/
+
+WORKDIR /home/sango
+RUN go get -d .
+RUN go build -o run run.go
+RUN chmod 755 run
+
+RUN ./run -t
+RUN rm -rf test
+
+USER sango
