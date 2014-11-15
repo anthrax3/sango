@@ -35,13 +35,11 @@ type AgentOption struct {
 }
 
 func Run(opt AgentOption) {
-	var version, command, test bool
-	flag.BoolVar(&version, "v", false, "")
-	flag.BoolVar(&command, "c", false, "")
-	flag.BoolVar(&test, "t", false, "")
 	flag.Parse()
+	subcommand := flag.Arg(0)
 
-	if version {
+	switch subcommand {
+	case "version":
 		var img Image
 		data, err := ioutil.ReadFile("config.yml")
 		if err != nil {
@@ -64,10 +62,8 @@ func Run(opt AgentOption) {
 		e := msgpack.NewEncoder(os.Stdout)
 		e.Encode(img)
 		os.Stdout.Close()
-		return
-	}
 
-	if test {
+	case "test":
 		if opt.Test != nil {
 			files, stdin, stdout := opt.Test()
 			a := agent{
@@ -90,23 +86,21 @@ func Run(opt AgentOption) {
 				log.Fatalf("stdout should be %s; got %s", stdout, a.out.RunStdout)
 			}
 		}
-		return
-	}
 
-	var in Input
-	d := msgpack.NewDecoder(os.Stdin)
-	err := d.Decode(&in)
-	if err != nil {
-		return
-	}
+	case "cmd":
+		var in Input
+		d := msgpack.NewDecoder(os.Stdin)
+		err := d.Decode(&in)
+		if err != nil {
+			return
+		}
 
-	var files []string
-	for k, v := range in.Files {
-		ioutil.WriteFile(k, []byte(v), 0644)
-		files = append(files, k)
-	}
+		var files []string
+		for k, v := range in.Files {
+			ioutil.WriteFile(k, []byte(v), 0644)
+			files = append(files, k)
+		}
 
-	if command {
 		var c CommandLine
 		if opt.BuildCmd != nil {
 			var out Output
@@ -121,27 +115,39 @@ func Run(opt AgentOption) {
 		e := msgpack.NewEncoder(os.Stdout)
 		e.Encode(c)
 		os.Stdout.Close()
-		return
-	}
 
-	a := agent{
-		in:       in,
-		files:    files,
-		buildCmd: opt.BuildCmd,
-		runCmd:   opt.RunCmd,
-	}
+	case "run":
+		var in Input
+		d := msgpack.NewDecoder(os.Stdin)
+		err := d.Decode(&in)
+		if err != nil {
+			return
+		}
 
-	err = a.build(os.Stderr)
-	if err == nil {
-		err = a.run(os.Stderr)
-	}
-	if err == nil {
-		a.out.Status = "Success"
-	} else {
-		a.out.Status = err.Error()
-	}
+		var files []string
+		for k, v := range in.Files {
+			ioutil.WriteFile(k, []byte(v), 0644)
+			files = append(files, k)
+		}
 
-	a.close()
+		a := agent{
+			in:       in,
+			files:    files,
+			buildCmd: opt.BuildCmd,
+			runCmd:   opt.RunCmd,
+		}
+
+		err = a.build(os.Stderr)
+		if err == nil {
+			err = a.run(os.Stderr)
+		}
+		if err == nil {
+			a.out.Status = "Success"
+		} else {
+			a.out.Status = err.Error()
+		}
+		a.close()
+	}
 }
 
 func System(wdir, stdin, command string, args ...string) (string, string) {

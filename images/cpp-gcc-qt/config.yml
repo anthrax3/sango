@@ -1,6 +1,6 @@
 id: cpp-gcc-qt
-name: gcc
-language: C++/Qt
+name: gcc/Qt5.3
+language: C++
 
 extensions:
   - cpp

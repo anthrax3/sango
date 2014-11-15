@@ -40,7 +40,7 @@ func (i Image) dockerImageName() string {
 
 func (i *Image) GetInfo() error {
 	var stdout bytes.Buffer
-	cmd := exec.Command("docker", "run", "-i", "--net=none", i.dockerImageName(), "./run", "-v")
+	cmd := exec.Command("docker", "run", "-i", "--net=none", i.dockerImageName(), "./agent", "version")
 	cmd.Stdout = &stdout
 	err := cmd.Run()
 
@@ -63,7 +63,7 @@ func (i *Image) GetCommand(in Input) (CommandLine, error) {
 	}
 
 	var stdout bytes.Buffer
-	cmd := exec.Command("docker", "run", "-i", "--net=none", i.dockerImageName(), "./run", "-c")
+	cmd := exec.Command("docker", "run", "-i", "--net=none", i.dockerImageName(), "./agent", "cmd")
 	cmd.Stdin = bytes.NewBuffer(data)
 	cmd.Stdout = &stdout
 	err = cmd.Run()
@@ -118,7 +118,7 @@ func (i Image) Exec(in Input, msgch chan<- *Message) (Output, error) {
 
 	var stdout bytes.Buffer
 	r, w := io.Pipe()
-	cmd := exec.Command("docker", "run", "-i", "--name", id, "--net=none", i.dockerImageName(), "./run")
+	cmd := exec.Command("docker", "run", "-i", "--name", id, "--net=none", i.dockerImageName(), "./agent", "run")
 	cmd.Stdin = bytes.NewReader(data)
 	cmd.Stdout = &stdout
 	cmd.Stderr = w
