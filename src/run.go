@@ -74,16 +74,19 @@ func Run(opt AgentOption) {
 			}
 
 			var stderr bytes.Buffer
-			err := a.build(&stderr)
-			if err == nil {
-				err = a.run(&stderr)
-			}
+			_, err := a.build(&stderr)
 			if err != nil {
 				log.Fatal(err)
-			}
-
-			if a.out.RunStdout != stdout {
-				log.Fatalf("stdout should be %s; got %s", stdout, a.out.RunStdout)
+			} else {
+				out, err := a.run(&stderr)
+				if err != nil {
+					log.Fatal(err)
+				}
+				if out.Stdout != stdout {
+					log.Fatalf("stdout should be %s; got %s", stdout, out.Stdout)
+				} else {
+					log.Print("TEST PASS")
+				}
 			}
 		}
 
@@ -101,19 +104,45 @@ func Run(opt AgentOption) {
 			files = append(files, k)
 		}
 
-		var c CommandLine
+		c := make(map[string]string)
 		if opt.BuildCmd != nil {
 			var out Output
 			cmd, args := opt.BuildCmd(files, in, &out)
-			c.Build = strings.Join(append([]string{cmd}, args...), " ")
+			c["build"] = strings.Join(append([]string{cmd}, args...), " ")
 		}
 		if opt.RunCmd != nil {
 			var out Output
 			cmd, args := opt.RunCmd(files, in, &out)
-			c.Run = strings.Join(append([]string{cmd}, args...), " ")
+			c["run"] = strings.Join(append([]string{cmd}, args...), " ")
 		}
 		e := msgpack.NewEncoder(os.Stdout)
 		e.Encode(c)
+		os.Stdout.Close()
+
+	case "build":
+		var in Input
+		d := msgpack.NewDecoder(os.Stdin)
+		err := d.Decode(&in)
+		if err != nil {
+			return
+		}
+
+		var files []string
+		for k, v := range in.Files {
+			ioutil.WriteFile(k, []byte(v), 0644)
+			files = append(files, k)
+		}
+
+		a := agent{
+			in:       in,
+			files:    files,
+			buildCmd: opt.BuildCmd,
+			runCmd:   opt.RunCmd,
+		}
+
+		stage, _ := a.build(os.Stderr)
+		e := msgpack.NewEncoder(os.Stdout)
+		e.Encode(stage)
 		os.Stdout.Close()
 
 	case "run":
@@ -137,16 +166,10 @@ func Run(opt AgentOption) {
 			runCmd:   opt.RunCmd,
 		}
 
-		err = a.build(os.Stderr)
-		if err == nil {
-			err = a.run(os.Stderr)
-		}
-		if err == nil {
-			a.out.Status = "Success"
-		} else {
-			a.out.Status = err.Error()
-		}
-		a.close()
+		stage, _ := a.run(os.Stderr)
+		e := msgpack.NewEncoder(os.Stdout)
+		e.Encode(stage)
+		os.Stdout.Close()
 	}
 }
 
@@ -163,61 +186,63 @@ func System(wdir, stdin, command string, args ...string) (string, string) {
 	return string(stdout.Bytes()), string(stderr.Bytes())
 }
 
-func (a *agent) build(msgout io.Writer) error {
+func (a *agent) build(msgout io.Writer) (Stage, error) {
+	var s Stage
 	if a.buildCmd == nil {
-		return nil
+		return s, nil
 	}
 
 	cmd, args := a.buildCmd(a.files, a.in, &a.out)
-	a.out.Command.Build = strings.Join(append([]string{cmd}, args...), " ")
+	s.Command = strings.Join(append([]string{cmd}, args...), " ")
 	var stdout, stderr bytes.Buffer
-	msgStdout := MsgpackFilter{Writer: msgout, Tag: "build-stdout"}
-	msgStderr := MsgpackFilter{Writer: msgout, Tag: "build-stderr"}
+	msgStdout := MsgpackFilter{Writer: msgout, Tag: "stdout", Stage: "build"}
+	msgStderr := MsgpackFilter{Writer: msgout, Tag: "stderr", Stage: "build"}
 	err, code, signal := Exec(cmd, args, "", io.MultiWriter(&msgStdout, &stdout), io.MultiWriter(&msgStderr, &stderr), 5*time.Second)
-	a.out.BuildStdout = string(stdout.Bytes())
-	a.out.BuildStderr = string(stderr.Bytes())
-	a.out.Code = code
-	a.out.Signal = signal
+	s.Stdout = string(stdout.Bytes())
+	s.Stderr = string(stderr.Bytes())
+	s.Code = code
+	s.Signal = signal
 	if err != nil {
 		if _, ok := err.(TimeoutError); ok {
-			return errors.New("Time limit exceeded")
+			s.Status = "Time limit exceeded"
 		} else {
-			return errors.New("Build error")
+			s.Status = "Failed"
+			return s, errors.New(s.Status)
 		}
+	} else {
+		s.Status = "OK"
 	}
 
-	return nil
+	return s, nil
 }
 
-func (a *agent) run(msgout io.Writer) error {
+func (a *agent) run(msgout io.Writer) (Stage, error) {
+	var s Stage
 	if a.runCmd == nil {
-		return nil
+		return s, nil
 	}
 
 	cmd, args := a.runCmd(a.files, a.in, &a.out)
-	a.out.Command.Run = strings.Join(append([]string{cmd}, args...), " ")
+	s.Command = strings.Join(append([]string{cmd}, args...), " ")
 	var stdout, stderr bytes.Buffer
-	msgStdout := MsgpackFilter{Writer: msgout, Tag: "run-stdout"}
-	msgStderr := MsgpackFilter{Writer: msgout, Tag: "run-stderr"}
+	msgStdout := MsgpackFilter{Writer: msgout, Tag: "stdout", Stage: "run"}
+	msgStderr := MsgpackFilter{Writer: msgout, Tag: "stderr", Stage: "run"}
 	start := time.Now()
 	err, code, signal := Exec(cmd, args, a.in.Stdin, io.MultiWriter(&msgStdout, &stdout), io.MultiWriter(&msgStderr, &stderr), 5*time.Second)
-	a.out.RunningTime = time.Now().Sub(start).Seconds()
-	a.out.RunStdout = string(stdout.Bytes())
-	a.out.RunStderr = string(stderr.Bytes())
-	a.out.Code = code
-	a.out.Signal = signal
+	s.RunningTime = time.Now().Sub(start).Seconds()
+	s.Stdout = string(stdout.Bytes())
+	s.Stderr = string(stderr.Bytes())
+	s.Code = code
+	s.Signal = signal
 	if err != nil {
 		if _, ok := err.(TimeoutError); ok {
-			return errors.New("Time limit exceeded")
+			s.Status = "Time limit exceeded"
 		} else {
-			return errors.New("Runtime error")
+			s.Status = "Failed"
+			return s, errors.New(s.Status)
 		}
+	} else {
+		s.Status = "OK"
 	}
-	return nil
-}
-
-func (a agent) close() {
-	e := msgpack.NewEncoder(os.Stdout)
-	e.Encode(a.out)
-	os.Stdout.Close()
+	return s, nil
 }

@@ -55,8 +55,8 @@ func (i *Image) GetInfo() error {
 	return nil
 }
 
-func (i *Image) GetCommand(in Input) (CommandLine, error) {
-	var c CommandLine
+func (i *Image) GetCommand(in Input) (map[string]string, error) {
+	c := make(map[string]string)
 	data, err := msgpack.Marshal(in)
 	if err != nil {
 		return c, err
@@ -116,9 +116,31 @@ func (i Image) Exec(in Input, msgch chan<- *Message) (Output, error) {
 		}
 	}
 
+	out := Output{Stages: make(map[string]Stage)}
+
+	build, err := i.Stage("build", data, msgch, id)
+	if err != nil {
+		build.Status = "Internal error"
+	}
+	if len(build.Command) > 0 {
+		out.Stages["build"] = build
+	}
+
+	if err == nil {
+		run, err := i.Stage("run", data, msgch, id)
+		if err != nil {
+			run.Status = "Internal error"
+		}
+		out.Stages["run"] = run
+	}
+
+	return out, nil
+}
+
+func (i Image) Stage(name string, data []byte, msgch chan<- *Message, id string) (Stage, error) {
 	var stdout bytes.Buffer
 	r, w := io.Pipe()
-	cmd := exec.Command("docker", "run", "-i", "--name", id, "--net=none", i.dockerImageName(), "./agent", "run")
+	cmd := exec.Command("docker", "run", "-i", "--name", id, "--net=none", i.dockerImageName(), "./agent", name)
 	cmd.Stdin = bytes.NewReader(data)
 	cmd.Stdout = &stdout
 	cmd.Stderr = w
@@ -129,9 +151,7 @@ func (i Image) Exec(in Input, msgch chan<- *Message) (Output, error) {
 		ch <- cmd.Wait()
 	}()
 
-	out := Output{
-		MixedOutput: make([]Message, 0),
-	}
+	mixed := make([]Message, 0)
 
 	go func() {
 		d := msgpack.NewDecoder(r)
@@ -147,10 +167,11 @@ func (i Image) Exec(in Input, msgch chan<- *Message) (Output, error) {
 			if msgch != nil {
 				msgch <- &m
 			}
-			out.MixedOutput = append(out.MixedOutput, m)
+			mixed = append(mixed, m)
 		}
 	}()
 
+	var err error
 	select {
 	case <-time.After(time.Second * 8):
 		stopcmd := exec.Command("docker", "stop", "--time=0", id)
@@ -162,16 +183,15 @@ func (i Image) Exec(in Input, msgch chan<- *Message) (Output, error) {
 	r.Close()
 	w.Close()
 
+	var stage Stage
 	if err != nil {
-		out.Status = "Internal error"
+		return stage, err
 	} else {
-		err = msgpack.Unmarshal(stdout.Bytes(), &out)
-		if err != nil {
-			return Output{}, err
-		}
+		err = msgpack.Unmarshal(stdout.Bytes(), &stage)
 	}
 
-	return out, nil
+	stage.Mixed = mixed
+	return stage, err
 }
 
 func CleanImages() error {

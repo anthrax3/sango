@@ -240,8 +240,8 @@ func (s *Sango) apiRun(r render.Render, res http.ResponseWriter, req *http.Reque
 	}
 }
 
-func (s *Sango) getCmd(req ExecRequest) (sango.CommandLine, int, error) {
-	var c sango.CommandLine
+func (s *Sango) getCmd(req ExecRequest) (map[string]string, int, error) {
+	var c map[string]string
 	data, err := msgpack.Marshal(req)
 	if err != nil {
 		return c, 500, errors.New("Internal error")
