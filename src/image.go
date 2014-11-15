@@ -26,10 +26,10 @@ type Image struct {
 	ID         string            `yaml:"id"         json:"id"`
 	Name       string            `yaml:"name"       json:"name"`
 	Language   string            `yaml:"language"   json:"language"`
-	Options    map[string]Option `yaml:"options"    json:"options,omitempty"`
+	Options    map[string]Option `yaml:"options"    json:"options,omitempty"` // TODO: options per commands?
+	Commands   []string          `yaml:"-"          json:"-"`
 	Version    string            `yaml:"-"          json:"version"`
 	Template   string            `yaml:"-"          json:"-"`
-	HelloWorld string            `yaml:"-"          json:"-"`
 	Extensions []string          `yaml:"extensions" json:"extensions"`
 	AceMode    string            `yaml:"acemode"    json:"-"`
 }

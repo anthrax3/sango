@@ -7,20 +7,20 @@ import (
 	"time"
 )
 
-type RunCommand struct {
+type BuildCommand struct {
 	Input
 	H func(Input) (cmd [][]string)
 }
 
-func (c RunCommand) Invoke() interface{} {
+func (c BuildCommand) Invoke() interface{} {
 	var stage Stage
 	var stdout, stderr bytes.Buffer
 	for _, cmd := range c.H(c.Input) {
 		if len(cmd) == 0 {
 			continue
 		}
-		msgStdout := MsgpackFilter{Writer: os.Stderr, Tag: "stdout", Stage: "run"}
-		msgStderr := MsgpackFilter{Writer: os.Stderr, Tag: "stderr", Stage: "run"}
+		msgStdout := MsgpackFilter{Writer: os.Stderr, Tag: "stdout", Stage: "build"}
+		msgStderr := MsgpackFilter{Writer: os.Stderr, Tag: "stderr", Stage: "build"}
 		err, code, signal := Exec(cmd[0], cmd[1:], c.Input.Stdin, io.MultiWriter(&msgStdout, &stdout), io.MultiWriter(&msgStderr, &stderr), 5*time.Second)
 		stage.Stdout = string(stdout.Bytes())
 		stage.Stderr = string(stderr.Bytes())
