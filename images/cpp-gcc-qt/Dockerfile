@@ -19,6 +19,6 @@ RUN go build -o run run.go
 RUN chmod 755 run
 
 RUN ./run -t
-RUN rm -rf test
+RUN rm -rf test Makefile *.o *.pro sango
 
 USER sango
