@@ -9,6 +9,7 @@ RUN rm go1.3.3.linux-amd64.tar.gz
 
 ENV GOPATH /go
 ENV GOROOT /usr/local/go
-ENV PATH /usr/local/go/bin:$PATH
+ENV PATH /go/bin:/usr/local/go/bin:$PATH
+RUN go get github.com/jteeuwen/go-bindata/...
 
 RUN useradd -m sango

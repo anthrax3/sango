@@ -16,5 +16,5 @@ ENV GOROOT /go
 ENV GOPATH /gosrc
 
 WORKDIR /home/sango
-RUN ./agent test
+RUN agent test
 USER sango

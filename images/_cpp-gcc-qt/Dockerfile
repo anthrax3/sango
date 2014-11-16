@@ -17,7 +17,7 @@ WORKDIR /home/sango
 RUN if [ ! -f agent ]; then go get -d .; go build -o agent agent.go; fi
 RUN chmod 755 agent
 
-RUN ./agent test
+RUN agent test
 RUN rm -rf test Makefile *.o *.pro sango
 
 USER sango

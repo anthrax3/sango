@@ -41,7 +41,7 @@ func Run(opt AgentOption) {
 	switch subcommand {
 	case "version":
 		var img Image
-		data, err := ioutil.ReadFile("config.yml")
+		data, err := ioutil.ReadFile("/tmp/sango/config.yml")
 		if err != nil {
 			return
 		}
@@ -51,10 +51,8 @@ func Run(opt AgentOption) {
 			return
 		}
 
-		data, _ = ioutil.ReadFile("template.txt")
+		data, _ = ioutil.ReadFile("/tmp/sango/template.txt")
 		img.Template = string(data)
-		data, _ = ioutil.ReadFile("hello.txt")
-		img.HelloWorld = string(data)
 
 		ver := strings.Trim(opt.VerCmd(), "\r\n ")
 		img.Version = ver
