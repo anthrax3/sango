@@ -127,6 +127,7 @@ func NewSango(conf sango.Config) *Sango {
 	m.Get("/", s.index)
 	m.Get("/:id", s.log)
 	m.Get("/template/:env", s.template)
+	m.Get("/hello/:env", s.hello)
 
 	return s
 }
@@ -239,8 +240,8 @@ func (s *Sango) apiRun(r render.Render, res http.ResponseWriter, req *http.Reque
 	}
 }
 
-func (s *Sango) getCmd(req ExecRequest) (map[string]string, int, error) {
-	var c map[string]string
+func (s *Sango) getCmd(req ExecRequest) (sango.CommandLine, int, error) {
+	var c sango.CommandLine
 	data, err := msgpack.Marshal(req)
 	if err != nil {
 		return c, 500, errors.New("Internal error")
@@ -367,6 +368,18 @@ func (s *Sango) template(res http.ResponseWriter, params martini.Params) {
 	}
 	res.WriteHeader(200)
 	res.Write([]byte(img.Template))
+}
+
+func (s *Sango) hello(res http.ResponseWriter, params martini.Params) {
+	env := params["env"]
+	img, ok := s.images()[env]
+	res.Header()["Content-Type"] = []string{"text/plain"}
+	if !ok {
+		res.WriteHeader(404)
+		return
+	}
+	res.WriteHeader(200)
+	res.Write([]byte(img.HelloWorld))
 }
 
 func (s *Sango) Close() {

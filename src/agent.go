@@ -15,14 +15,12 @@ const LimitedWriterSize = 1024 * 10
 type MsgpackFilter struct {
 	Writer io.Writer
 	Tag    string
-	Stage  string
 }
 
 func (j *MsgpackFilter) Write(p []byte) (n int, err error) {
 	v := Message{
-		Tag:   j.Tag,
-		Data:  string(p),
-		Stage: j.Stage,
+		Tag:  j.Tag,
+		Data: string(p),
 	}
 	data, err := msgpack.Marshal(v)
 	if err != nil {
@@ -30,6 +28,11 @@ func (j *MsgpackFilter) Write(p []byte) (n int, err error) {
 	}
 	_, err = j.Writer.Write(data)
 	return len(p), err
+}
+
+type Message struct {
+	Tag  string `msgpack:"t" json:"tag"`
+	Data string `msgpack:"d" json:"data"`
 }
 
 func Exec(command string, args []string, stdin string, rstdout, rstderr io.Writer, timeout time.Duration) (error, int, int) {
@@ -105,25 +108,22 @@ type Input struct {
 	Options map[string]interface{} `json:"options,omitempty"`
 }
 
-type Message struct {
-	Stage string `msgpack:"s" json:"stage"`
-	Tag   string `msgpack:"t" json:"tag"`
-	Data  string `msgpack:"d" json:"data"`
-}
-
-type Stage struct {
-	Stdout      string    `json:"stdout"`
-	Stderr      string    `json:"stderr"`
-	Command     string    `json:"command"`
-	Code        int       `json:"code"`
-	Signal      int       `json:"signal"`
-	RunningTime float64   `json:"running-time"`
-	Mixed       []Message `json:"mixed"`
-	Status      string    `json:"status"`
-}
-
 type Output struct {
-	Stages map[string]Stage `json:"stages"`
+	BuildStdout string      `json:"build-stdout"`
+	BuildStderr string      `json:"build-stderr"`
+	RunStdout   string      `json:"run-stdout"`
+	RunStderr   string      `json:"run-stderr"`
+	MixedOutput []Message   `json:"mixed-output"`
+	Command     CommandLine `json:"command"`
+	Code        int         `json:"code"`
+	Signal      int         `json:"signal"`
+	Status      string      `json:"status"`
+	RunningTime float64     `json:"running-time"`
+}
+
+type CommandLine struct {
+	Build string `json:"build"`
+	Run   string `json:"run"`
 }
 
 type TimeoutError struct{}

@@ -26,10 +26,10 @@ type Image struct {
 	ID         string            `yaml:"id"         json:"id"`
 	Name       string            `yaml:"name"       json:"name"`
 	Language   string            `yaml:"language"   json:"language"`
-	Options    map[string]Option `yaml:"options"    json:"options,omitempty"` // TODO: options per commands?
-	Commands   []string          `yaml:"-"          json:"-"`
+	Options    map[string]Option `yaml:"options"    json:"options,omitempty"`
 	Version    string            `yaml:"-"          json:"version"`
 	Template   string            `yaml:"-"          json:"-"`
+	HelloWorld string            `yaml:"-"          json:"-"`
 	Extensions []string          `yaml:"extensions" json:"extensions"`
 	AceMode    string            `yaml:"acemode"    json:"-"`
 }
@@ -55,8 +55,8 @@ func (i *Image) GetInfo() error {
 	return nil
 }
 
-func (i *Image) GetCommand(in Input) (map[string]string, error) {
-	c := make(map[string]string)
+func (i *Image) GetCommand(in Input) (CommandLine, error) {
+	var c CommandLine
 	data, err := msgpack.Marshal(in)
 	if err != nil {
 		return c, err
@@ -116,31 +116,9 @@ func (i Image) Exec(in Input, msgch chan<- *Message) (Output, error) {
 		}
 	}
 
-	out := Output{Stages: make(map[string]Stage)}
-
-	build, err := i.Stage("build", data, msgch, id)
-	if err != nil {
-		build.Status = "Internal error"
-	}
-	if len(build.Command) > 0 {
-		out.Stages["build"] = build
-	}
-
-	if err == nil {
-		run, err := i.Stage("run", data, msgch, id)
-		if err != nil {
-			run.Status = "Internal error"
-		}
-		out.Stages["run"] = run
-	}
-
-	return out, nil
-}
-
-func (i Image) Stage(name string, data []byte, msgch chan<- *Message, id string) (Stage, error) {
 	var stdout bytes.Buffer
 	r, w := io.Pipe()
-	cmd := exec.Command("docker", "run", "-i", "--name", id, "--net=none", i.dockerImageName(), "./agent", name)
+	cmd := exec.Command("docker", "run", "-i", "--name", id, "--net=none", i.dockerImageName(), "./agent", "run")
 	cmd.Stdin = bytes.NewReader(data)
 	cmd.Stdout = &stdout
 	cmd.Stderr = w
@@ -151,7 +129,9 @@ func (i Image) Stage(name string, data []byte, msgch chan<- *Message, id string)
 		ch <- cmd.Wait()
 	}()
 
-	mixed := make([]Message, 0)
+	out := Output{
+		MixedOutput: make([]Message, 0),
+	}
 
 	go func() {
 		d := msgpack.NewDecoder(r)
@@ -167,11 +147,10 @@ func (i Image) Stage(name string, data []byte, msgch chan<- *Message, id string)
 			if msgch != nil {
 				msgch <- &m
 			}
-			mixed = append(mixed, m)
+			out.MixedOutput = append(out.MixedOutput, m)
 		}
 	}()
 
-	var err error
 	select {
 	case <-time.After(time.Second * 8):
 		stopcmd := exec.Command("docker", "stop", "--time=0", id)
@@ -183,15 +162,16 @@ func (i Image) Stage(name string, data []byte, msgch chan<- *Message, id string)
 	r.Close()
 	w.Close()
 
-	var stage Stage
 	if err != nil {
-		return stage, err
+		out.Status = "Internal error"
 	} else {
-		err = msgpack.Unmarshal(stdout.Bytes(), &stage)
+		err = msgpack.Unmarshal(stdout.Bytes(), &out)
+		if err != nil {
+			return Output{}, err
+		}
 	}
 
-	stage.Mixed = mixed
-	return stage, err
+	return out, nil
 }
 
 func CleanImages() error {
