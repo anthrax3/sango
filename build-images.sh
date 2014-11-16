@@ -1,6 +1,6 @@
 #!/bin/sh
 
-for file in images/*/; do
+for file in images/[!_]*/; do
    if [ -d $file ]; then
       if [ -f "$file/config.yml" ]; then
           image=`cat $file/config.yml | grep id: | sed -r "s/id://g" | tr -d ' '`
