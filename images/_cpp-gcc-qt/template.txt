@@ -1,5 +1,0 @@
-#include <QTextStream>
-
-int main() {
-    @cursor@
-}
