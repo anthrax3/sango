@@ -10,6 +10,7 @@ import (
 	"os"
 	"os/exec"
 	"strings"
+	"syscall"
 	"time"
 
 	"github.com/vmihailenco/msgpack"
@@ -204,6 +205,29 @@ func (a *agent) run(msgout io.Writer) error {
 	a.out.RunStderr = string(stderr.Bytes())
 	a.out.Code = code
 	a.out.Signal = signal
+
+	var usage syscall.Rusage
+	syscall.Getrusage(syscall.RUSAGE_CHILDREN, &usage)
+	u := Rusage{
+		Utime:    float64(usage.Utime.Nano()) / 1000000000.0,
+		Stime:    float64(usage.Stime.Nano()) / 1000000000.0,
+		Maxrss:   usage.Maxrss,
+		Ixrss:    usage.Ixrss,
+		Idrss:    usage.Idrss,
+		Isrss:    usage.Isrss,
+		Minflt:   usage.Minflt,
+		Majflt:   usage.Majflt,
+		Nswap:    usage.Nswap,
+		Inblock:  usage.Inblock,
+		Oublock:  usage.Oublock,
+		Msgsnd:   usage.Msgsnd,
+		Msgrcv:   usage.Msgrcv,
+		Nsignals: usage.Nsignals,
+		Nvcsw:    usage.Nvcsw,
+		Nivcsw:   usage.Nivcsw,
+	}
+	a.out.Rusage = u
+
 	if err != nil {
 		if _, ok := err.(TimeoutError); ok {
 			return errors.New("Time limit exceeded")
