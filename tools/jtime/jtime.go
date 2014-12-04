@@ -15,6 +15,7 @@ import (
 )
 
 func main() {
+	timeout := flag.Duration("t", time.Second*5, "timeout")
 	flag.Parse()
 	args := flag.Args()
 	if len(args) == 0 {
@@ -27,7 +28,7 @@ func main() {
 	msgStdout := sango.MsgpackFilter{Writer: os.Stderr, Tag: "run-stdout"}
 	msgStderr := sango.MsgpackFilter{Writer: os.Stderr, Tag: "run-stderr"}
 	start := time.Now()
-	err, code, signal := sango.Exec(args[0], args[1:], os.Stdin, io.MultiWriter(&msgStdout, &stdout), io.MultiWriter(&msgStderr, &stderr), 5*time.Second)
+	err, code, signal := sango.Exec(args[0], args[1:], os.Stdin, io.MultiWriter(&msgStdout, &stdout), io.MultiWriter(&msgStderr, &stderr), *timeout)
 	if err != nil {
 		log.Fatal(err)
 	}
