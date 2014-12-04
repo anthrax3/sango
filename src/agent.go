@@ -3,7 +3,6 @@ package sango
 import (
 	"io"
 	"os/exec"
-	"strings"
 	"syscall"
 	"time"
 
@@ -35,9 +34,9 @@ type Message struct {
 	Data string `msgpack:"d" json:"data"`
 }
 
-func Exec(command string, args []string, stdin string, rstdout, rstderr io.Writer, timeout time.Duration) (error, int, int) {
+func Exec(command string, args []string, stdin io.Reader, rstdout, rstderr io.Writer, timeout time.Duration) (error, int, int) {
 	cmd := exec.Command(command, args...)
-	cmd.Stdin = strings.NewReader(stdin)
+	cmd.Stdin = stdin
 	cmd.Stdout = &LimitedWriter{W: rstdout, N: LimitedWriterSize}
 	cmd.Stderr = &LimitedWriter{W: rstderr, N: LimitedWriterSize}
 	cmd.Start()

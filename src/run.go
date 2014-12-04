@@ -172,7 +172,7 @@ func (a *agent) build(msgout io.Writer) error {
 	var stdout, stderr bytes.Buffer
 	msgStdout := MsgpackFilter{Writer: msgout, Tag: "build-stdout"}
 	msgStderr := MsgpackFilter{Writer: msgout, Tag: "build-stderr"}
-	err, code, signal := Exec(cmd, args, "", io.MultiWriter(&msgStdout, &stdout), io.MultiWriter(&msgStderr, &stderr), 5*time.Second)
+	err, code, signal := Exec(cmd, args, strings.NewReader(""), io.MultiWriter(&msgStdout, &stdout), io.MultiWriter(&msgStderr, &stderr), 5*time.Second)
 	a.out.BuildStdout = string(stdout.Bytes())
 	a.out.BuildStderr = string(stderr.Bytes())
 	a.out.Code = code
@@ -199,7 +199,7 @@ func (a *agent) run(msgout io.Writer) error {
 	msgStdout := MsgpackFilter{Writer: msgout, Tag: "run-stdout"}
 	msgStderr := MsgpackFilter{Writer: msgout, Tag: "run-stderr"}
 	start := time.Now()
-	err, code, signal := Exec(cmd, args, a.in.Stdin, io.MultiWriter(&msgStdout, &stdout), io.MultiWriter(&msgStderr, &stderr), 5*time.Second)
+	err, code, signal := Exec(cmd, args, strings.NewReader(a.in.Stdin), io.MultiWriter(&msgStdout, &stdout), io.MultiWriter(&msgStderr, &stderr), 5*time.Second)
 	a.out.RunningTime = time.Now().Sub(start).Seconds()
 	a.out.RunStdout = string(stdout.Bytes())
 	a.out.RunStderr = string(stderr.Bytes())
