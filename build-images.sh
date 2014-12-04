@@ -3,6 +3,11 @@
 tgz=`mktemp -d`/sango.tar.gz
 tar czf $tgz --exclude-vcs .
 
+rm -rf .build
+mkdir .build
+cp -r images .build
+cd .build
+
 for file in images/[!_]*/; do
    if [ -d $file ]; then
       if [ -f "$file/config.yml" ]; then
@@ -13,3 +18,5 @@ for file in images/[!_]*/; do
       fi
    fi
 done
+
+rm -rf .build
