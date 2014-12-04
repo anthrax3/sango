@@ -2,11 +2,12 @@ FROM golang:1.2
 
 RUN useradd -m sango
 
-RUN mkdir /tmp/sango
 ADD . /tmp/sango
 WORKDIR /tmp/sango
-
-RUN if [ ! -f agent ]; then go get -d .; go build -o agent agent.go; fi
+RUN mkdir -p $GOPATH/src/github.com/h2so5/sango
+RUN if [ -f sango.tar.gz ]; then tar -C $GOPATH/src/github.com/h2so5/sango -xzf sango.tar.gz; rm sango.tar.gz; fi
+RUN go get -d .
+RUN go build -o agent agent.go
 RUN chmod 755 agent
 RUN mv agent /usr/bin/agent
 RUN agent test
