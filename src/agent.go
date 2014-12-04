@@ -126,6 +126,17 @@ type CommandLine struct {
 	Run   string `json:"run"`
 }
 
+type ExecResult struct {
+	Stdout      string      `json:"stdout"`
+	Stderr      string      `json:"stderr"`
+	Rusage      Rusage      `json:"rusage"`
+	MixedOutput []Message   `json:"mixed-output"`
+	Command     CommandLine `json:"command"`
+	Code        int         `json:"code"`
+	Signal      int         `json:"signal"`
+	RunningTime float64     `json:"running-time"`
+}
+
 type Rusage struct {
 	Utime    float64 `json:"utime"`
 	Stime    float64 `json:"stime"`
