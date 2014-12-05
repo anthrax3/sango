@@ -29,7 +29,7 @@ import (
 
 var sangoPath string
 var configFile *string = flag.String("f", "/etc/sango.yml", "Specify config file")
-var cmdCacheSeconds = 60 * 60
+var cmdCacheSeconds = 60
 
 type Sango struct {
 	*martini.ClassicMartini
@@ -77,7 +77,7 @@ func NewSango(conf sango.Config) *Sango {
 			if err == nil {
 				imgdch <- images
 			} else {
-			       log.Print(err)
+				log.Print(err)
 			}
 			<-tick
 		}
@@ -240,8 +240,8 @@ func (s *Sango) apiRun(r render.Render, res http.ResponseWriter, req *http.Reque
 	}
 }
 
-func (s *Sango) getCmd(req ExecRequest) (sango.CommandLine, int, error) {
-	var c sango.CommandLine
+func (s *Sango) getCmd(req ExecRequest) (map[string]string, int, error) {
+	var c map[string]string
 	data, err := msgpack.Marshal(req)
 	if err != nil {
 		return c, 500, errors.New("Internal error")

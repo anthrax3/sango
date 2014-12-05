@@ -55,8 +55,8 @@ func (i *Image) GetInfo() error {
 	return nil
 }
 
-func (i *Image) GetCommand(in Input) (CommandLine, error) {
-	var c CommandLine
+func (i *Image) GetCommand(in Input) (map[string]string, error) {
+	var c map[string]string
 	data, err := msgpack.Marshal(in)
 	if err != nil {
 		return c, err

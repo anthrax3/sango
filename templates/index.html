@@ -74,9 +74,9 @@
     });
 
     function applyData(data, input) {
-      var result = data.output["status"] + "  (Exit code: " + data.output["code"] + ")";
-      if (data.output["running-time"] > 0) {
-        result += "  " + data.output["running-time"].toFixed(4) + " sec";
+      var result = data.output["status"] + "  (Exit code: " + data.output.results.run.code + ")";
+      if (data.output.results.run["running-time"] > 0) {
+        result += "  " + data.output.results.run["running-time"].toFixed(4) + " sec";
       }
       $('#status').text(result);
       var mixed = data.output["mixed-output"];

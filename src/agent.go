@@ -108,33 +108,19 @@ type Input struct {
 }
 
 type Output struct {
-	BuildStdout string      `json:"build-stdout"`
-	BuildStderr string      `json:"build-stderr"`
-	RunStdout   string      `json:"run-stdout"`
-	RunStderr   string      `json:"run-stderr"`
-	Rusage      Rusage      `json:"rusage"`
-	MixedOutput []Message   `json:"mixed-output"`
-	Command     CommandLine `json:"command"`
-	Code        int         `json:"code"`
-	Signal      int         `json:"signal"`
-	Status      string      `json:"status"`
-	RunningTime float64     `json:"running-time"`
-}
-
-type CommandLine struct {
-	Build string `json:"build"`
-	Run   string `json:"run"`
+	Results     map[string]ExecResult `json:"results"`
+	MixedOutput []Message             `json:"mixed-output"`
+	Status      string                `json:"status"`
 }
 
 type ExecResult struct {
-	Stdout      string      `json:"stdout"`
-	Stderr      string      `json:"stderr"`
-	Rusage      Rusage      `json:"rusage"`
-	MixedOutput []Message   `json:"mixed-output"`
-	Command     CommandLine `json:"command"`
-	Code        int         `json:"code"`
-	Signal      int         `json:"signal"`
-	RunningTime float64     `json:"running-time"`
+	Stdout      string  `json:"stdout"`
+	Stderr      string  `json:"stderr"`
+	Rusage      Rusage  `json:"rusage"`
+	Command     string  `json:"command"`
+	Code        int     `json:"code"`
+	Signal      int     `json:"signal"`
+	RunningTime float64 `json:"running-time"`
 }
 
 type Rusage struct {

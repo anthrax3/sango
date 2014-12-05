@@ -67,6 +67,7 @@ func Run(opt AgentOption) {
 			files, stdin, stdout := opt.Test()
 			a := agent{
 				in:       Input{Stdin: stdin},
+				out:      Output{Results: make(map[string]ExecResult)},
 				files:    files,
 				buildCmd: opt.BuildCmd,
 				runCmd:   opt.RunCmd,
@@ -81,8 +82,8 @@ func Run(opt AgentOption) {
 				log.Fatal(err)
 			}
 
-			if a.out.RunStdout != stdout {
-				log.Fatalf("stdout should be %s; got %s", stdout, a.out.RunStdout)
+			if a.out.Results["run"].Stdout != stdout {
+				log.Fatalf("stdout should be %s; got %s", stdout, a.out.Results["run"].Stdout)
 			}
 		}
 
@@ -100,16 +101,16 @@ func Run(opt AgentOption) {
 			files = append(files, k)
 		}
 
-		var c CommandLine
+		var c = map[string]string{}
 		if opt.BuildCmd != nil {
 			var out Output
 			cmd, args := opt.BuildCmd(files, in, &out)
-			c.Build = strings.Join(append([]string{cmd}, args...), " ")
+			c["build"] = strings.Join(append([]string{cmd}, args...), " ")
 		}
 		if opt.RunCmd != nil {
 			var out Output
 			cmd, args := opt.RunCmd(files, in, &out)
-			c.Run = strings.Join(append([]string{cmd}, args...), " ")
+			c["run"] = strings.Join(append([]string{cmd}, args...), " ")
 		}
 		e := msgpack.NewEncoder(os.Stdout)
 		e.Encode(c)
@@ -131,6 +132,7 @@ func Run(opt AgentOption) {
 
 		a := agent{
 			in:       in,
+			out:      Output{Results: make(map[string]ExecResult)},
 			files:    files,
 			buildCmd: opt.BuildCmd,
 			runCmd:   opt.RunCmd,
@@ -167,16 +169,18 @@ func (a *agent) build(msgout io.Writer) error {
 		return nil
 	}
 
+	var result ExecResult
 	cmd, args := a.buildCmd(a.files, a.in, &a.out)
-	a.out.Command.Build = strings.Join(append([]string{cmd}, args...), " ")
+	result.Command = strings.Join(append([]string{cmd}, args...), " ")
 	var stdout, stderr bytes.Buffer
 	msgStdout := MsgpackFilter{Writer: msgout, Tag: "build-stdout"}
 	msgStderr := MsgpackFilter{Writer: msgout, Tag: "build-stderr"}
 	err, code, signal := Exec(cmd, args, strings.NewReader(""), io.MultiWriter(&msgStdout, &stdout), io.MultiWriter(&msgStderr, &stderr), 5*time.Second)
-	a.out.BuildStdout = string(stdout.Bytes())
-	a.out.BuildStderr = string(stderr.Bytes())
-	a.out.Code = code
-	a.out.Signal = signal
+	result.Stdout = string(stdout.Bytes())
+	result.Stderr = string(stderr.Bytes())
+	result.Code = code
+	result.Signal = signal
+	a.out.Results["build"] = result
 	if err != nil {
 		if _, ok := err.(TimeoutError); ok {
 			return errors.New("Time limit exceeded")
@@ -193,18 +197,19 @@ func (a *agent) run(msgout io.Writer) error {
 		return nil
 	}
 
+	var result ExecResult
 	cmd, args := a.runCmd(a.files, a.in, &a.out)
-	a.out.Command.Run = strings.Join(append([]string{cmd}, args...), " ")
+	result.Command = strings.Join(append([]string{cmd}, args...), " ")
 	var stdout, stderr bytes.Buffer
 	msgStdout := MsgpackFilter{Writer: msgout, Tag: "run-stdout"}
 	msgStderr := MsgpackFilter{Writer: msgout, Tag: "run-stderr"}
 	start := time.Now()
 	err, code, signal := Exec(cmd, args, strings.NewReader(a.in.Stdin), io.MultiWriter(&msgStdout, &stdout), io.MultiWriter(&msgStderr, &stderr), 5*time.Second)
-	a.out.RunningTime = time.Now().Sub(start).Seconds()
-	a.out.RunStdout = string(stdout.Bytes())
-	a.out.RunStderr = string(stderr.Bytes())
-	a.out.Code = code
-	a.out.Signal = signal
+	result.RunningTime = time.Now().Sub(start).Seconds()
+	result.Stdout = string(stdout.Bytes())
+	result.Stderr = string(stderr.Bytes())
+	result.Code = code
+	result.Signal = signal
 
 	var usage syscall.Rusage
 	syscall.Getrusage(syscall.RUSAGE_CHILDREN, &usage)
@@ -219,7 +224,8 @@ func (a *agent) run(msgout io.Writer) error {
 		Nvcsw:   usage.Nvcsw,
 		Nivcsw:  usage.Nivcsw,
 	}
-	a.out.Rusage = u
+	result.Rusage = u
+	a.out.Results["run"] = result
 
 	if err != nil {
 		if _, ok := err.(TimeoutError); ok {
