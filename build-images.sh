@@ -1,7 +1,7 @@
 #!/bin/sh
 
 tgz=`mktemp -d`/sango.tar.gz
-tar czf $tgz --exclude-vcs .
+tar czf $tgz .
 
 rm -rf .build
 mkdir .build
