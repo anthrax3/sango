@@ -28,6 +28,7 @@ type Image struct {
 	Language   string            `yaml:"language"   json:"language"`
 	Options    map[string]Option `yaml:"options"    json:"options,omitempty"`
 	Version    string            `yaml:"-"          json:"version"`
+	Protocol   int               `yaml:"-"          json:"-"`
 	Template   string            `yaml:"-"          json:"-"`
 	HelloWorld string            `yaml:"-"          json:"-"`
 	Extensions []string          `yaml:"extensions" json:"extensions"`
@@ -288,8 +289,12 @@ func MakeImageList(langpath string, pull bool) (ImageList, error) {
 		if err != nil {
 			log.Printf("Filed to get version: %v", err)
 		} else {
-			log.Printf("Get version: %s (%s)", img.Language, img.Version)
-			l[img.ID] = img
+			if img.Protocol != ProtocolVersion {
+				log.Printf("Protocol version mismatch: %s (%s) %d", img.Language, img.Version, img.Protocol)
+			} else {
+				log.Printf("Loaded: %s (%s)", img.Language, img.Version)
+				l[img.ID] = img
+			}
 		}
 	}
 

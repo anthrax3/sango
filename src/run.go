@@ -17,6 +17,8 @@ import (
 	"gopkg.in/yaml.v2"
 )
 
+const ProtocolVersion = 1
+
 type VersionHandler func() string
 type CmdHandler func([]string, Input, *Output) (string, []string)
 type TestHandler func() ([]string, string, string)
@@ -57,6 +59,8 @@ func Run(opt AgentOption) {
 
 		ver := strings.Trim(opt.VerCmd(), "\r\n ")
 		img.Version = ver
+
+		img.Protocol = ProtocolVersion
 
 		e := msgpack.NewEncoder(os.Stdout)
 		e.Encode(img)
