@@ -138,22 +138,15 @@ type ExecResult struct {
 }
 
 type Rusage struct {
-	Utime    float64 `json:"utime"`
-	Stime    float64 `json:"stime"`
-	Maxrss   int64   `json:"maxrss"`
-	Ixrss    int64   `json:"ixrss"`
-	Idrss    int64   `json:"idrss"`
-	Isrss    int64   `json:"isrss"`
-	Minflt   int64   `json:"minflt"`
-	Majflt   int64   `json:"majflt"`
-	Nswap    int64   `json:"nswap"`
-	Inblock  int64   `json:"inblock"`
-	Oublock  int64   `json:"oublick"`
-	Msgsnd   int64   `json:"msgsnd"`
-	Msgrcv   int64   `json:"msgrcv"`
-	Nsignals int64   `json:"nsignals"`
-	Nvcsw    int64   `json:"nvcsw"`
-	Nivcsw   int64   `json:"nivcsw"`
+	Utime   float64 `json:"utime"`
+	Stime   float64 `json:"stime"`
+	Maxrss  int64   `json:"maxrss"`
+	Minflt  int64   `json:"minflt"`
+	Majflt  int64   `json:"majflt"`
+	Inblock int64   `json:"inblock"`
+	Oublock int64   `json:"oublick"`
+	Nvcsw   int64   `json:"nvcsw"`
+	Nivcsw  int64   `json:"nivcsw"`
 }
 
 type TimeoutError struct{}
