@@ -8,6 +8,8 @@ mkdir .build
 cp -r images .build
 cd .build
 
+(cd images/_base && docker build -t sango/_base .);
+
 for file in images/[!_]*/; do
    if [ -d $file ]; then
       if [ -f "$file/config.yml" ]; then
