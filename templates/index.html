@@ -82,8 +82,9 @@
         code = data.output.results.run.code;
       }
       var result = data.output["status"] + "  (Exit code: " + code + ")";
-      if (data.output.results.run != undefined && data.output.results.run["running-time"] > 0) {
-        result += "  " + data.output.results.run["running-time"].toFixed(4) + " sec";
+      if (data.output.results.run != undefined) {
+        result += "  " + data.output.results.run["running-time"].toFixed(4) + "sec";
+        result += "  " + data.output.results.run.rusage["maxrss"] + "KB";
       }
       $('#status').text(result);
       var mixed = data.output["mixed-output"];
