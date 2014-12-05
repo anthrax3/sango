@@ -1,5 +1,6 @@
 FROM phusion/baseimage
 
+RUN echo "nameserver 8.8.8.8" >> /etc/resolv.conf
 RUN apt-get update -m
 RUN apt-get install -y git mercurial make ruby python php5 openjdk-7-jdk nodejs npm build-essential valgrind
 
