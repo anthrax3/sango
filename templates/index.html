@@ -74,8 +74,15 @@
     });
 
     function applyData(data, input) {
-      var result = data.output["status"] + "  (Exit code: " + data.output.results.run.code + ")";
-      if (data.output.results.run["running-time"] > 0) {
+      var code = 0;
+      if (data.output.results.build != undefined) {
+        code = data.output.results.build.code;
+      }
+      if (data.output.results.run != undefined) {
+        code = data.output.results.run.code;
+      }
+      var result = data.output["status"] + "  (Exit code: " + code + ")";
+      if (data.output.results.run != undefined && data.output.results.run["running-time"] > 0) {
         result += "  " + data.output.results.run["running-time"].toFixed(4) + " sec";
       }
       $('#status').text(result);
