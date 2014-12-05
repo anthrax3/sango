@@ -10,14 +10,12 @@ import (
 	"os"
 	"os/exec"
 	"strings"
-	"syscall"
-	"time"
 
 	"github.com/vmihailenco/msgpack"
 	"gopkg.in/yaml.v2"
 )
 
-const ProtocolVersion = 1
+const ProtocolVersion = 3
 
 type VersionHandler func() string
 type CmdHandler func([]string, Input, *Output) (string, []string)
@@ -173,26 +171,26 @@ func (a *agent) build(msgout io.Writer) error {
 		return nil
 	}
 
+	var stdout bytes.Buffer
 	var result ExecResult
-	cmd, args := a.buildCmd(a.files, a.in, &a.out)
-	result.Command = strings.Join(append([]string{cmd}, args...), " ")
-	var stdout, stderr bytes.Buffer
-	msgStdout := MsgpackFilter{Writer: msgout, Tag: "build-stdout"}
-	msgStderr := MsgpackFilter{Writer: msgout, Tag: "build-stderr"}
-	err, code, signal := Exec(cmd, args, strings.NewReader(""), io.MultiWriter(&msgStdout, &stdout), io.MultiWriter(&msgStderr, &stderr), 5*time.Second)
-	result.Stdout = string(stdout.Bytes())
-	result.Stderr = string(stderr.Bytes())
-	result.Code = code
-	result.Signal = signal
-	a.out.Results["build"] = result
-	if err != nil {
-		if _, ok := err.(TimeoutError); ok {
-			return errors.New("Time limit exceeded")
-		} else {
-			return errors.New("Build error")
-		}
-	}
+	c, args := a.buildCmd(a.files, a.in, &a.out)
+	cmd := exec.Command("jtime", append([]string{"-p=build-", "--", c}, args...)...)
+	cmd.Stdin = strings.NewReader(a.in.Stdin)
+	cmd.Stdout = &stdout
+	cmd.Stderr = msgout
+	cmd.Run()
 
+	err := msgpack.Unmarshal(stdout.Bytes(), &result)
+	if err != nil {
+		return err
+	}
+	a.out.Results["build"] = result
+
+	if result.Timeout {
+		return errors.New("Time limit exceeded")
+	} else if result.Code != 0 {
+		return errors.New("Build error")
+	}
 	return nil
 }
 
@@ -201,42 +199,25 @@ func (a *agent) run(msgout io.Writer) error {
 		return nil
 	}
 
+	var stdout bytes.Buffer
 	var result ExecResult
-	cmd, args := a.runCmd(a.files, a.in, &a.out)
-	result.Command = strings.Join(append([]string{cmd}, args...), " ")
-	var stdout, stderr bytes.Buffer
-	msgStdout := MsgpackFilter{Writer: msgout, Tag: "run-stdout"}
-	msgStderr := MsgpackFilter{Writer: msgout, Tag: "run-stderr"}
-	start := time.Now()
-	err, code, signal := Exec(cmd, args, strings.NewReader(a.in.Stdin), io.MultiWriter(&msgStdout, &stdout), io.MultiWriter(&msgStderr, &stderr), 5*time.Second)
-	result.RunningTime = time.Now().Sub(start).Seconds()
-	result.Stdout = string(stdout.Bytes())
-	result.Stderr = string(stderr.Bytes())
-	result.Code = code
-	result.Signal = signal
+	c, args := a.runCmd(a.files, a.in, &a.out)
+	cmd := exec.Command("jtime", append([]string{"-p=run-", "--", c}, args...)...)
+	cmd.Stdin = strings.NewReader(a.in.Stdin)
+	cmd.Stdout = &stdout
+	cmd.Stderr = msgout
+	cmd.Run()
 
-	var usage syscall.Rusage
-	syscall.Getrusage(syscall.RUSAGE_CHILDREN, &usage)
-	u := Rusage{
-		Utime:   float64(usage.Utime.Nano()) / 1000000000.0,
-		Stime:   float64(usage.Stime.Nano()) / 1000000000.0,
-		Maxrss:  usage.Maxrss,
-		Minflt:  usage.Minflt,
-		Majflt:  usage.Majflt,
-		Inblock: usage.Inblock,
-		Oublock: usage.Oublock,
-		Nvcsw:   usage.Nvcsw,
-		Nivcsw:  usage.Nivcsw,
+	err := msgpack.Unmarshal(stdout.Bytes(), &result)
+	if err != nil {
+		return err
 	}
-	result.Rusage = u
 	a.out.Results["run"] = result
 
-	if err != nil {
-		if _, ok := err.(TimeoutError); ok {
-			return errors.New("Time limit exceeded")
-		} else {
-			return errors.New("Runtime error")
-		}
+	if result.Timeout {
+		return errors.New("Time limit exceeded")
+	} else if result.Code != 0 {
+		return errors.New("Runtime error")
 	}
 	return nil
 }

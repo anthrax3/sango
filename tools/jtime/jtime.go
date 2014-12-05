@@ -31,7 +31,9 @@ func main() {
 	start := time.Now()
 	err, code, signal := sango.Exec(args[0], args[1:], os.Stdin, io.MultiWriter(&msgStdout, &stdout), io.MultiWriter(&msgStderr, &stderr), *timeout)
 	if err != nil {
-		log.Fatal(err)
+		if _, ok := err.(sango.TimeoutError); ok {
+			out.Timeout = true
+		}
 	}
 	out.RunningTime = time.Now().Sub(start).Seconds()
 	out.Stdout = string(stdout.Bytes())

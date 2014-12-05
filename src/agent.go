@@ -121,6 +121,7 @@ type ExecResult struct {
 	Code        int     `json:"code"`
 	Signal      int     `json:"signal"`
 	RunningTime float64 `json:"running-time"`
+	Timeout     bool    `json:"timeout"`
 }
 
 type Rusage struct {
