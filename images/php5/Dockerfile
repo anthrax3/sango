@@ -1,5 +1,7 @@
 FROM sango/_base
 
+RUN apt-get install -y php5
+
 ADD . /tmp/sango
 WORKDIR /tmp/sango
 
