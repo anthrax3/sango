@@ -15,7 +15,7 @@ import (
 	"gopkg.in/yaml.v2"
 )
 
-const ProtocolVersion = 4
+const ProtocolVersion = 5
 
 type AgentBase struct {
 }
@@ -24,9 +24,19 @@ func (a AgentBase) BuildCommand(in Input) ([]string, error) {
 	return nil, errors.New("unknown command")
 }
 
+func (a AgentBase) ActionCommands(in Input) (map[string][]string, error) {
+	return nil, nil
+}
+
+func (a AgentBase) Action(c string, in Input) (ExecResult, error) {
+	return ExecResult{}, errors.New("unknown command")
+}
+
 type Agent interface {
 	BuildCommand(in Input) ([]string, error)
 	RunCommand(in Input) ([]string, error)
+	ActionCommands(in Input) (map[string][]string, error)
+	Action(c string, in Input) (ExecResult, error)
 	Version() string
 	Test() (map[string]string, string, string)
 }
@@ -39,7 +49,7 @@ func MapToFileList(files map[string]string) []string {
 	return l
 }
 
-func Run(opt Agent) {
+func Run(act Agent) {
 	flag.Parse()
 	subcommand := flag.Arg(0)
 
@@ -59,32 +69,38 @@ func Run(opt Agent) {
 		data, _ = ioutil.ReadFile("/tmp/sango/template.txt")
 		img.Template = string(data)
 
-		ver := strings.Trim(opt.Version(), "\r\n ")
+		ver := strings.Trim(act.Version(), "\r\n ")
 		img.Version = ver
 		img.Protocol = ProtocolVersion
 		img.Actions = []string{"run"}
+
+		c, err := act.ActionCommands(Input{})
+		if err == nil {
+			for k := range c {
+				img.Actions = append(img.Actions, k)
+			}
+		}
 
 		e := msgpack.NewEncoder(os.Stdout)
 		e.Encode(img)
 		os.Stdout.Close()
 
 	case "test":
-		files, stdin, stdout := opt.Test()
+		files, stdin, stdout := act.Test()
 		in := Input{Stdin: stdin, Files: files}
 
-		var stderr bytes.Buffer
-		a, err := opt.BuildCommand(in)
+		a, err := act.BuildCommand(in)
 		if err == nil {
-			_, err := jtime(a, "build", in, &stderr)
+			_, err := Jtime(a, "build", in, nil)
 			if err != nil {
 				log.Fatal(err)
 			}
 		}
-		a, err = opt.RunCommand(in)
+		a, err = act.RunCommand(in)
 		if err != nil {
 			log.Fatal(err)
 		}
-		r, err := jtime(a, "run", in, &stderr)
+		r, err := Jtime(a, "run", in, nil)
 		if err != nil {
 			log.Fatal(err)
 		}
@@ -108,14 +124,22 @@ func Run(opt Agent) {
 
 		var command = map[string]string{}
 
-		a, err := opt.BuildCommand(in)
+		a, err := act.BuildCommand(in)
 		if err == nil {
 			command["build"] = strings.Join(a, " ")
 		}
-		a, err = opt.RunCommand(in)
+		a, err = act.RunCommand(in)
 		if err == nil {
 			command["run"] = strings.Join(a, " ")
 		}
+
+		c, err := act.ActionCommands(in)
+		if err == nil {
+			for k, a := range c {
+				command[k] = strings.Join(a, " ")
+			}
+		}
+
 		e := msgpack.NewEncoder(os.Stdout)
 		e.Encode(command)
 		os.Stdout.Close()
@@ -128,19 +152,17 @@ func Run(opt Agent) {
 			return
 		}
 
-		var files []string
 		for k, v := range in.Files {
 			ioutil.WriteFile(k, []byte(v), 0644)
-			files = append(files, k)
 		}
 
 		out := Output{Results: make(map[string]ExecResult)}
 		out.Status = "Success"
 
 		var builderr bool
-		a, err := opt.BuildCommand(in)
+		a, err := act.BuildCommand(in)
 		if err == nil {
-			r, err := jtime(a, "build", in, os.Stderr)
+			r, err := Jtime(a, "build", in, os.Stderr)
 			if err != nil {
 				builderr = true
 				if _, ok := err.(TimeoutError); ok {
@@ -153,11 +175,11 @@ func Run(opt Agent) {
 		}
 
 		if !builderr {
-			a, err = opt.RunCommand(in)
+			a, err = act.RunCommand(in)
 			if err != nil {
 				log.Fatal(err)
 			}
-			r, err := jtime(a, "run", in, os.Stderr)
+			r, err := Jtime(a, "run", in, os.Stderr)
 			if err != nil {
 				if _, ok := err.(TimeoutError); ok {
 					out.Status = "Time limit exceeded"
@@ -168,6 +190,30 @@ func Run(opt Agent) {
 			out.Results["run"] = r
 		}
 
+		e := msgpack.NewEncoder(os.Stdout)
+		e.Encode(out)
+		os.Stdout.Close()
+
+	default:
+		var in Input
+		d := msgpack.NewDecoder(os.Stdin)
+		err := d.Decode(&in)
+		if err != nil {
+			return
+		}
+
+		for k, v := range in.Files {
+			ioutil.WriteFile(k, []byte(v), 0644)
+		}
+
+		out := Output{Results: make(map[string]ExecResult)}
+		out.Status = "Success"
+
+		r, err := act.Action(subcommand, in)
+		if err != nil {
+			out.Status = "Runtime error"
+		}
+		out.Results[subcommand] = r
 		e := msgpack.NewEncoder(os.Stdout)
 		e.Encode(out)
 		os.Stdout.Close()
@@ -187,7 +233,7 @@ func System(wdir, stdin, command string, args ...string) (string, string) {
 	return string(stdout.Bytes()), string(stderr.Bytes())
 }
 
-func jtime(a []string, p string, in Input, msgout io.Writer) (ExecResult, error) {
+func Jtime(a []string, p string, in Input, msgout io.Writer) (ExecResult, error) {
 	var stdout bytes.Buffer
 	var result ExecResult
 	cmd := exec.Command("jtime", append([]string{"-p=" + p + "-", "--"}, a...)...)

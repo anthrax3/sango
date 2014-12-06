@@ -14,7 +14,6 @@ type Agent struct {
 }
 
 func (a Agent) BuildCommand(in sango.Input) ([]string, error) {
-
 	var args []string = []string{
 		"-o",
 		"main",
@@ -30,7 +29,6 @@ func (a Agent) BuildCommand(in sango.Input) ([]string, error) {
 	}
 
 	return append([]string{"gcc"}, append(args, sango.MapToFileList(in.Files)...)...), nil
-
 }
 
 func (a Agent) RunCommand(in sango.Input) ([]string, error) {

@@ -122,6 +122,7 @@ func NewSango(conf sango.Config) *Sango {
 		r.Post("/cmd", s.apiCmd)
 		r.Get("/run/stream", s.apiRunStreaming)
 		r.Get("/log/:id", s.apiLog)
+		r.Post("/:act", s.apiAct)
 	})
 
 	m.Get("/", s.index)
@@ -183,7 +184,7 @@ func (s *Sango) apiImageList(r render.Render) {
 	r.JSON(200, s.imageArray())
 }
 
-func (s *Sango) run(req io.Reader, msgch chan<- *sango.Message) (ExecResponse, int, error) {
+func (s *Sango) run(act string, req io.Reader, msgch chan<- *sango.Message) (ExecResponse, int, error) {
 	reader := io.LimitReader(req, s.conf.UploadLimit)
 	d := json.NewDecoder(reader)
 	var ereq ExecRequest
@@ -206,7 +207,7 @@ func (s *Sango) run(req io.Reader, msgch chan<- *sango.Message) (ExecResponse, i
 	s.reqch <- 0
 	defer func() { <-s.reqch }()
 
-	out, err := img.Exec(ereq.Input, msgch)
+	out, err := img.Exec(act, ereq.Input, msgch)
 	if err != nil {
 		log.Print(err)
 	}
@@ -216,7 +217,7 @@ func (s *Sango) run(req io.Reader, msgch chan<- *sango.Message) (ExecResponse, i
 		Output:      out,
 		Date:        time.Now(),
 	}
-	if !ereq.Volatile {
+	if act != "run" || !ereq.Volatile {
 		eres.ID = sango.GenerateID()
 		data, err := msgpack.Marshal(eres)
 		if err != nil {
@@ -232,7 +233,7 @@ func (s *Sango) run(req io.Reader, msgch chan<- *sango.Message) (ExecResponse, i
 }
 
 func (s *Sango) apiRun(r render.Render, res http.ResponseWriter, req *http.Request) {
-	eres, code, err := s.run(req.Body, nil)
+	eres, code, err := s.run("run", req.Body, nil)
 	if err != nil {
 		r.JSON(code, map[string]string{"error": err.Error()})
 	} else {
@@ -283,6 +284,15 @@ func (s *Sango) getCmd(req ExecRequest) (map[string]string, int, error) {
 	return c, 200, nil
 }
 
+func (s *Sango) apiAct(r render.Render, params martini.Params, res http.ResponseWriter, req *http.Request) {
+	eres, code, err := s.run(params["act"], req.Body, nil)
+	if err != nil {
+		r.JSON(code, map[string]string{"error": err.Error()})
+	} else {
+		r.JSON(code, eres)
+	}
+}
+
 func (s *Sango) apiCmd(r render.Render, res http.ResponseWriter, req *http.Request) {
 	reader := io.LimitReader(req.Body, s.conf.UploadLimit)
 	d := json.NewDecoder(reader)
@@ -328,7 +338,7 @@ func (s *Sango) apiRunStreaming(res http.ResponseWriter, req *http.Request) {
 		}
 	}()
 
-	eres, _, err := s.run(r, msgch)
+	eres, _, err := s.run("run", r, msgch)
 	if err != nil {
 		log.Print(err)
 		return

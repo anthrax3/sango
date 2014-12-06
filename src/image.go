@@ -85,7 +85,7 @@ func GenerateID() string {
 	return string(base58.EncodeBig(nil, big.NewInt(0).Add(big.NewInt(0xc0ffee), big.NewInt(rand.Int63()))))
 }
 
-func (i Image) Exec(in Input, msgch chan<- *Message) (Output, error) {
+func (i Image) Exec(act string, in Input, msgch chan<- *Message) (Output, error) {
 	data, err := msgpack.Marshal(in)
 	if err != nil {
 		return Output{}, err
@@ -120,7 +120,7 @@ func (i Image) Exec(in Input, msgch chan<- *Message) (Output, error) {
 
 	var stdout bytes.Buffer
 	r, w := io.Pipe()
-	cmd := exec.Command("docker", "run", "-i", "--name", id, "--net=none", i.dockerImageName(), "agent", "run")
+	cmd := exec.Command("docker", "run", "-i", "--name", id, "--net=none", i.dockerImageName(), "agent", act)
 	cmd.Stdin = bytes.NewReader(data)
 	cmd.Stdout = &stdout
 	cmd.Stderr = w
