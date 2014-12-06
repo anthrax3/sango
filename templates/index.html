@@ -240,7 +240,7 @@
             url: '/api/cmd',
             data: data,
             success: function(data) {
-              if (data.build.length > 0) {
+              if (data.build != undefined) {
                 $('#cmdline').text(data.build);
               } else {
                 $('#cmdline').text(data.run);
