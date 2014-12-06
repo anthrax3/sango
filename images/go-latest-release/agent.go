@@ -2,6 +2,7 @@ package main
 
 import (
 	"errors"
+	"io/ioutil"
 	"strings"
 
 	"github.com/h2so5/sango/src"
@@ -43,7 +44,7 @@ func (a Agent) Test() (map[string]string, string, string) {
 
 func (a Agent) ActionCommands(in sango.Input) (map[string][]string, error) {
 	return map[string][]string{
-		"fmt": append([]string{"gofmt"}, sango.MapToFileList(in.Files)...),
+		"fmt": append([]string{"goimports", "-w"}, sango.MapToFileList(in.Files)...),
 	}, nil
 }
 
@@ -53,7 +54,16 @@ func (a Agent) Action(c string, in sango.Input) (sango.ExecResult, error) {
 		if err != nil {
 			return sango.ExecResult{}, err
 		}
-		return sango.Jtime(a["fmt"], "fmt", in, nil)
+		r, err := sango.Jtime(a["fmt"], "fmt", in, nil)
+		files := map[string]string{}
+		for k := range in.Files {
+			data, err := ioutil.ReadFile(k)
+			if err == nil {
+				files[k] = string(data)
+			}
+		}
+		r.Data = files
+		return r, err
 	}
 	return sango.ExecResult{}, errors.New("unknown command")
 }

@@ -18,5 +18,7 @@ RUN chmod 755 agent
 RUN mv agent /usr/bin/agent
 RUN agent test
 
+RUN go get golang.org/x/tools/cmd/goimports
+
 WORKDIR /home/sango
 USER sango

@@ -116,10 +116,8 @@ func Run(act Agent) {
 			return
 		}
 
-		var files []string
 		for k, v := range in.Files {
 			ioutil.WriteFile(k, []byte(v), 0644)
-			files = append(files, k)
 		}
 
 		var command = map[string]string{}

@@ -114,14 +114,15 @@ type Output struct {
 }
 
 type ExecResult struct {
-	Stdout      string  `json:"stdout"`
-	Stderr      string  `json:"stderr"`
-	Rusage      Rusage  `json:"rusage"`
-	Command     string  `json:"command"`
-	Code        int     `json:"code"`
-	Signal      int     `json:"signal"`
-	RunningTime float64 `json:"running-time"`
-	Timeout     bool    `json:"timeout"`
+	Stdout      string            `json:"stdout"`
+	Stderr      string            `json:"stderr"`
+	Rusage      Rusage            `json:"rusage"`
+	Command     string            `json:"command"`
+	Code        int               `json:"code"`
+	Signal      int               `json:"signal"`
+	RunningTime float64           `json:"running-time"`
+	Timeout     bool              `json:"timeout"`
+	Data        map[string]string `json:"data,omitempty"`
 }
 
 type Rusage struct {
