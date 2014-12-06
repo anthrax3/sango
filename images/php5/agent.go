@@ -1,7 +1,6 @@
 package main
 
 import (
-	"errors"
 	"regexp"
 	"strings"
 
@@ -11,14 +10,11 @@ import (
 var r = regexp.MustCompile("\\(.+\\)")
 
 type Agent struct {
+	sango.AgentBase
 }
 
-func (a Agent) Command(in sango.Input, n string) (string, []string, error) {
-	switch n {
-	case "run":
-		return "php", sango.MapToFileList(in.Files), nil
-	}
-	return "", nil, errors.New("unknown command")
+func (a Agent) RunCommand(in sango.Input) (string, []string, error) {
+	return "php", sango.MapToFileList(in.Files), nil
 }
 
 func (a Agent) Version() string {

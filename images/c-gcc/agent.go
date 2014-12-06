@@ -1,7 +1,6 @@
 package main
 
 import (
-	"errors"
 	"regexp"
 	"strings"
 
@@ -11,34 +10,34 @@ import (
 var r = regexp.MustCompile("\\(.+\\)")
 
 type Agent struct {
+	sango.AgentBase
 }
 
-func (a Agent) Command(in sango.Input, n string) (string, []string, error) {
-	switch n {
-	case "build":
-		var args []string = []string{
-			"-o",
-			"main",
-			"-pthread",
-		}
+func (a Agent) BuildCommand(in sango.Input) (string, []string, error) {
 
-		if optim, ok := in.Options["optim"].(string); ok {
-			args = append(args, optim)
-		}
-
-		if optim, ok := in.Options["std"].(string); ok {
-			args = append(args, optim)
-		}
-
-		return "gcc", append(args, sango.MapToFileList(in.Files)...), nil
-
-	case "run":
-		if valgrind, ok := in.Options["valgrind"].(bool); ok && valgrind {
-			return "valgrind", []string{"--leak-check=full", "./main"}, nil
-		}
-		return "./main", nil, nil
+	var args []string = []string{
+		"-o",
+		"main",
+		"-pthread",
 	}
-	return "", nil, errors.New("unknown command")
+
+	if optim, ok := in.Options["optim"].(string); ok {
+		args = append(args, optim)
+	}
+
+	if optim, ok := in.Options["std"].(string); ok {
+		args = append(args, optim)
+	}
+
+	return "gcc", append(args, sango.MapToFileList(in.Files)...), nil
+
+}
+
+func (a Agent) RunCommand(in sango.Input) (string, []string, error) {
+	if valgrind, ok := in.Options["valgrind"].(bool); ok && valgrind {
+		return "valgrind", []string{"--leak-check=full", "./main"}, nil
+	}
+	return "./main", nil, nil
 }
 
 func (a Agent) Version() string {

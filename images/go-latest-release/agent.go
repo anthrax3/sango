@@ -1,36 +1,34 @@
 package main
 
 import (
-	"errors"
 	"strings"
 
 	"github.com/h2so5/sango/src"
 )
 
 type Agent struct {
+	sango.AgentBase
 }
 
-func (a Agent) Command(in sango.Input, n string) (string, []string, error) {
-	switch n {
-	case "build":
-		var args []string = []string{
-			"build",
-			"-o",
-			"main",
-		}
-
-		if race, ok := in.Options["race"].(bool); ok {
-			if race {
-				args = append(args, "-race")
-			}
-		}
-
-		return "go", append(args, sango.MapToFileList(in.Files)...), nil
-
-	case "run":
-		return "./main", nil, nil
+func (a Agent) BuildCommand(in sango.Input) (string, []string, error) {
+	var args []string = []string{
+		"build",
+		"-o",
+		"main",
 	}
-	return "", nil, errors.New("unknown command")
+
+	if race, ok := in.Options["race"].(bool); ok {
+		if race {
+			args = append(args, "-race")
+		}
+	}
+
+	return "go", append(args, sango.MapToFileList(in.Files)...), nil
+
+}
+
+func (a Agent) RunCommand(in sango.Input) (string, []string, error) {
+	return "./main", nil, nil
 }
 
 func (a Agent) Version() string {
