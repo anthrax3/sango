@@ -1,5 +1,7 @@
 FROM sango/_base
 
+RUN apt-get install -y valgrind
+
 ADD . /tmp/sango
 WORKDIR /tmp/sango
 

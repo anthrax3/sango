@@ -27,3 +27,7 @@ options:
       - -std=gnu++03
       - -std=c++11
       - -std=gnu++11
+  valgrind:
+    title: Valgrind
+    type: bool
+    default: false

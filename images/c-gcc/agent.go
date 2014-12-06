@@ -33,6 +33,9 @@ func (a Agent) Command(in sango.Input, n string) (string, []string, error) {
 		return "gcc", append(args, sango.MapToFileList(in.Files)...), nil
 
 	case "run":
+		if valgrind, ok := in.Options["valgrind"].(bool); ok && valgrind {
+			return "valgrind", []string{"--leak-check=full", "./main"}, nil
+		}
 		return "./main", nil, nil
 	}
 	return "", nil, errors.New("unknown command")
