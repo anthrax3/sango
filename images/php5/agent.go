@@ -13,8 +13,8 @@ type Agent struct {
 	sango.AgentBase
 }
 
-func (a Agent) RunCommand(in sango.Input) (string, []string, error) {
-	return "php", sango.MapToFileList(in.Files), nil
+func (a Agent) RunCommand(in sango.Input) ([]string, error) {
+	return append([]string{"php"}, sango.MapToFileList(in.Files)...), nil
 }
 
 func (a Agent) Version() string {

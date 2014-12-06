@@ -27,6 +27,7 @@ type Image struct {
 	Name       string            `yaml:"name"       json:"name"`
 	Language   string            `yaml:"language"   json:"language"`
 	Options    map[string]Option `yaml:"options"    json:"options,omitempty"`
+	Actions    []string          `yaml:"-"          json:"actions"`
 	Version    string            `yaml:"-"          json:"version"`
 	Protocol   int               `yaml:"-"          json:"-"`
 	Template   string            `yaml:"-"          json:"-"`

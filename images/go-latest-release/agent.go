@@ -10,7 +10,7 @@ type Agent struct {
 	sango.AgentBase
 }
 
-func (a Agent) BuildCommand(in sango.Input) (string, []string, error) {
+func (a Agent) BuildCommand(in sango.Input) ([]string, error) {
 	var args []string = []string{
 		"build",
 		"-o",
@@ -23,12 +23,12 @@ func (a Agent) BuildCommand(in sango.Input) (string, []string, error) {
 		}
 	}
 
-	return "go", append(args, sango.MapToFileList(in.Files)...), nil
+	return append([]string{"go"}, append(args, sango.MapToFileList(in.Files)...)...), nil
 
 }
 
-func (a Agent) RunCommand(in sango.Input) (string, []string, error) {
-	return "./main", nil, nil
+func (a Agent) RunCommand(in sango.Input) ([]string, error) {
+	return []string{"./main"}, nil
 }
 
 func (a Agent) Version() string {

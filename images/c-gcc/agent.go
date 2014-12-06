@@ -13,7 +13,7 @@ type Agent struct {
 	sango.AgentBase
 }
 
-func (a Agent) BuildCommand(in sango.Input) (string, []string, error) {
+func (a Agent) BuildCommand(in sango.Input) ([]string, error) {
 
 	var args []string = []string{
 		"-o",
@@ -29,15 +29,15 @@ func (a Agent) BuildCommand(in sango.Input) (string, []string, error) {
 		args = append(args, optim)
 	}
 
-	return "gcc", append(args, sango.MapToFileList(in.Files)...), nil
+	return append([]string{"gcc"}, append(args, sango.MapToFileList(in.Files)...)...), nil
 
 }
 
-func (a Agent) RunCommand(in sango.Input) (string, []string, error) {
+func (a Agent) RunCommand(in sango.Input) ([]string, error) {
 	if valgrind, ok := in.Options["valgrind"].(bool); ok && valgrind {
-		return "valgrind", []string{"--leak-check=full", "./main"}, nil
+		return []string{"valgrind", "--leak-check=full", "./main"}, nil
 	}
-	return "./main", nil, nil
+	return []string{"./main"}, nil
 }
 
 func (a Agent) Version() string {

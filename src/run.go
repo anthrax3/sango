@@ -20,13 +20,13 @@ const ProtocolVersion = 4
 type AgentBase struct {
 }
 
-func (a AgentBase) BuildCommand(in Input) (string, []string, error) {
-	return "", nil, errors.New("unknown command")
+func (a AgentBase) BuildCommand(in Input) ([]string, error) {
+	return nil, errors.New("unknown command")
 }
 
 type Agent interface {
-	BuildCommand(in Input) (string, []string, error)
-	RunCommand(in Input) (string, []string, error)
+	BuildCommand(in Input) ([]string, error)
+	RunCommand(in Input) ([]string, error)
 	Version() string
 	Test() (map[string]string, string, string)
 }
@@ -62,6 +62,7 @@ func Run(opt Agent) {
 		ver := strings.Trim(opt.Version(), "\r\n ")
 		img.Version = ver
 		img.Protocol = ProtocolVersion
+		img.Actions = []string{"run"}
 
 		e := msgpack.NewEncoder(os.Stdout)
 		e.Encode(img)
@@ -72,18 +73,18 @@ func Run(opt Agent) {
 		in := Input{Stdin: stdin, Files: files}
 
 		var stderr bytes.Buffer
-		c, a, err := opt.BuildCommand(in)
+		a, err := opt.BuildCommand(in)
 		if err == nil {
-			_, err := jtime(c, a, "build", in, &stderr)
+			_, err := jtime(a, "build", in, &stderr)
 			if err != nil {
 				log.Fatal(err)
 			}
 		}
-		c, a, err = opt.RunCommand(in)
+		a, err = opt.RunCommand(in)
 		if err != nil {
 			log.Fatal(err)
 		}
-		r, err := jtime(c, a, "run", in, &stderr)
+		r, err := jtime(a, "run", in, &stderr)
 		if err != nil {
 			log.Fatal(err)
 		}
@@ -107,13 +108,13 @@ func Run(opt Agent) {
 
 		var command = map[string]string{}
 
-		c, a, err := opt.BuildCommand(in)
+		a, err := opt.BuildCommand(in)
 		if err == nil {
-			command["build"] = strings.Join(append([]string{c}, a...), " ")
+			command["build"] = strings.Join(a, " ")
 		}
-		c, a, err = opt.RunCommand(in)
+		a, err = opt.RunCommand(in)
 		if err == nil {
-			command["run"] = strings.Join(append([]string{c}, a...), " ")
+			command["run"] = strings.Join(a, " ")
 		}
 		e := msgpack.NewEncoder(os.Stdout)
 		e.Encode(command)
@@ -137,9 +138,9 @@ func Run(opt Agent) {
 		out.Status = "Success"
 
 		var builderr bool
-		c, a, err := opt.BuildCommand(in)
+		a, err := opt.BuildCommand(in)
 		if err == nil {
-			r, err := jtime(c, a, "build", in, os.Stderr)
+			r, err := jtime(a, "build", in, os.Stderr)
 			if err != nil {
 				builderr = true
 				if _, ok := err.(TimeoutError); ok {
@@ -152,11 +153,11 @@ func Run(opt Agent) {
 		}
 
 		if !builderr {
-			c, a, err = opt.RunCommand(in)
+			a, err = opt.RunCommand(in)
 			if err != nil {
 				log.Fatal(err)
 			}
-			r, err := jtime(c, a, "run", in, os.Stderr)
+			r, err := jtime(a, "run", in, os.Stderr)
 			if err != nil {
 				if _, ok := err.(TimeoutError); ok {
 					out.Status = "Time limit exceeded"
@@ -186,10 +187,10 @@ func System(wdir, stdin, command string, args ...string) (string, string) {
 	return string(stdout.Bytes()), string(stderr.Bytes())
 }
 
-func jtime(c string, a []string, p string, in Input, msgout io.Writer) (ExecResult, error) {
+func jtime(a []string, p string, in Input, msgout io.Writer) (ExecResult, error) {
 	var stdout bytes.Buffer
 	var result ExecResult
-	cmd := exec.Command("jtime", append([]string{"-p=" + p + "-", "--", c}, a...)...)
+	cmd := exec.Command("jtime", append([]string{"-p=" + p + "-", "--"}, a...)...)
 	cmd.Stdin = strings.NewReader(in.Stdin)
 	cmd.Stdout = &stdout
 	cmd.Stderr = msgout
