@@ -1,37 +1,44 @@
 package main
 
 import (
+	"errors"
 	"regexp"
 	"strings"
 
 	"github.com/h2so5/sango/src"
 )
 
-func build(files []string, in sango.Input, out *sango.Output) (string, []string) {
-	var args []string = []string{
-		"-o",
-		"main",
-		"-pthread",
-	}
-
-	if optim, ok := in.Options["optim"].(string); ok {
-		args = append(args, optim)
-	}
-
-	if optim, ok := in.Options["std"].(string); ok {
-		args = append(args, optim)
-	}
-
-	return "gcc", append(args, files...)
-}
-
-func run([]string, sango.Input, *sango.Output) (string, []string) {
-	return "./main", nil
-}
-
 var r = regexp.MustCompile("\\(.+\\)")
 
-func version() string {
+type Agent struct {
+}
+
+func (a Agent) Command(in sango.Input, n string) (string, []string, error) {
+	switch n {
+	case "build":
+		var args []string = []string{
+			"-o",
+			"main",
+			"-pthread",
+		}
+
+		if optim, ok := in.Options["optim"].(string); ok {
+			args = append(args, optim)
+		}
+
+		if optim, ok := in.Options["std"].(string); ok {
+			args = append(args, optim)
+		}
+
+		return "gcc", append(args, sango.MapToFileList(in.Files)...), nil
+
+	case "run":
+		return "./main", nil, nil
+	}
+	return "", nil, errors.New("unknown command")
+}
+
+func (a Agent) Version() string {
 	_, v := sango.System(".", "", "gcc", "-v")
 	l := strings.Split(v, "\n")
 	v = l[len(l)-2]
@@ -39,15 +46,10 @@ func version() string {
 	return v
 }
 
-func test() ([]string, string, string) {
-	return []string{"test/hello.c"}, "", "Hello World"
+func (a Agent) Test() (map[string]string, string, string) {
+	return map[string]string{"test/hello.c": ""}, "", "Hello World"
 }
 
 func main() {
-	sango.Run(sango.AgentOption{
-		BuildCmd: build,
-		RunCmd:   run,
-		VerCmd:   version,
-		Test:     test,
-	})
+	sango.Run(Agent{})
 }

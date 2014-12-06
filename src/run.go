@@ -15,27 +15,28 @@ import (
 	"gopkg.in/yaml.v2"
 )
 
-const ProtocolVersion = 3
-
-type VersionHandler func() string
-type CmdHandler func([]string, Input, *Output) (string, []string)
-type TestHandler func() ([]string, string, string)
+const ProtocolVersion = 4
 
 type agent struct {
-	in       Input
-	out      Output
-	files    []string
-	buildCmd CmdHandler
-	runCmd   CmdHandler
+	in    Input
+	files []string
 }
 
-type AgentOption struct {
-	BuildCmd, RunCmd CmdHandler
-	VerCmd           VersionHandler
-	Test             TestHandler
+type Agent interface {
+	Command(in Input, n string) (string, []string, error)
+	Version() string
+	Test() (map[string]string, string, string)
 }
 
-func Run(opt AgentOption) {
+func MapToFileList(files map[string]string) []string {
+	l := make([]string, 0, len(files))
+	for k := range files {
+		l = append(l, k)
+	}
+	return l
+}
+
+func Run(opt Agent) {
 	flag.Parse()
 	subcommand := flag.Arg(0)
 
@@ -55,9 +56,8 @@ func Run(opt AgentOption) {
 		data, _ = ioutil.ReadFile("/tmp/sango/template.txt")
 		img.Template = string(data)
 
-		ver := strings.Trim(opt.VerCmd(), "\r\n ")
+		ver := strings.Trim(opt.Version(), "\r\n ")
 		img.Version = ver
-
 		img.Protocol = ProtocolVersion
 
 		e := msgpack.NewEncoder(os.Stdout)
@@ -65,28 +65,27 @@ func Run(opt AgentOption) {
 		os.Stdout.Close()
 
 	case "test":
-		if opt.Test != nil {
-			files, stdin, stdout := opt.Test()
-			a := agent{
-				in:       Input{Stdin: stdin},
-				out:      Output{Results: make(map[string]ExecResult)},
-				files:    files,
-				buildCmd: opt.BuildCmd,
-				runCmd:   opt.RunCmd,
-			}
+		files, stdin, stdout := opt.Test()
+		in := Input{Stdin: stdin, Files: files}
 
-			var stderr bytes.Buffer
-			err := a.build(&stderr)
-			if err == nil {
-				err = a.run(&stderr)
-			}
+		var stderr bytes.Buffer
+		c, a, err := opt.Command(in, "build")
+		if err == nil {
+			_, err := jtime(c, a, in, &stderr)
 			if err != nil {
 				log.Fatal(err)
 			}
-
-			if a.out.Results["run"].Stdout != stdout {
-				log.Fatalf("stdout should be %s; got %s", stdout, a.out.Results["run"].Stdout)
-			}
+		}
+		c, a, err = opt.Command(in, "run")
+		if err != nil {
+			log.Fatal(err)
+		}
+		r, err := jtime(c, a, in, &stderr)
+		if err != nil {
+			log.Fatal(err)
+		}
+		if r.Stdout != stdout {
+			log.Fatalf("stdout should be %s; got %s", stdout, r.Stdout)
 		}
 
 	case "cmd":
@@ -103,19 +102,18 @@ func Run(opt AgentOption) {
 			files = append(files, k)
 		}
 
-		var c = map[string]string{}
-		if opt.BuildCmd != nil {
-			var out Output
-			cmd, args := opt.BuildCmd(files, in, &out)
-			c["build"] = strings.Join(append([]string{cmd}, args...), " ")
+		var command = map[string]string{}
+
+		c, a, err := opt.Command(in, "build")
+		if err == nil {
+			command["build"] = strings.Join(append([]string{c}, a...), " ")
 		}
-		if opt.RunCmd != nil {
-			var out Output
-			cmd, args := opt.RunCmd(files, in, &out)
-			c["run"] = strings.Join(append([]string{cmd}, args...), " ")
+		c, a, err = opt.Command(in, "run")
+		if err == nil {
+			command["run"] = strings.Join(append([]string{c}, a...), " ")
 		}
 		e := msgpack.NewEncoder(os.Stdout)
-		e.Encode(c)
+		e.Encode(command)
 		os.Stdout.Close()
 
 	case "run":
@@ -132,24 +130,43 @@ func Run(opt AgentOption) {
 			files = append(files, k)
 		}
 
-		a := agent{
-			in:       in,
-			out:      Output{Results: make(map[string]ExecResult)},
-			files:    files,
-			buildCmd: opt.BuildCmd,
-			runCmd:   opt.RunCmd,
+		out := Output{Results: make(map[string]ExecResult)}
+		out.Status = "Success"
+
+		var builderr bool
+		c, a, err := opt.Command(in, "build")
+		if err == nil {
+			r, err := jtime(c, a, in, os.Stderr)
+			if err != nil {
+				builderr = true
+				if _, ok := err.(TimeoutError); ok {
+					out.Status = "Time limit exceeded"
+				} else {
+					out.Status = "Build error"
+				}
+			}
+			out.Results["build"] = r
 		}
 
-		err = a.build(os.Stderr)
-		if err == nil {
-			err = a.run(os.Stderr)
+		if !builderr {
+			c, a, err = opt.Command(in, "run")
+			if err != nil {
+				log.Fatal(err)
+			}
+			r, err := jtime(c, a, in, os.Stderr)
+			if err != nil {
+				if _, ok := err.(TimeoutError); ok {
+					out.Status = "Time limit exceeded"
+				} else {
+					out.Status = "Runtime error"
+				}
+			}
+			out.Results["run"] = r
 		}
-		if err == nil {
-			a.out.Status = "Success"
-		} else {
-			a.out.Status = err.Error()
-		}
-		a.close()
+
+		e := msgpack.NewEncoder(os.Stdout)
+		e.Encode(out)
+		os.Stdout.Close()
 	}
 }
 
@@ -166,64 +183,24 @@ func System(wdir, stdin, command string, args ...string) (string, string) {
 	return string(stdout.Bytes()), string(stderr.Bytes())
 }
 
-func (a *agent) build(msgout io.Writer) error {
-	if a.buildCmd == nil {
-		return nil
-	}
-
+func jtime(c string, a []string, in Input, msgout io.Writer) (ExecResult, error) {
 	var stdout bytes.Buffer
 	var result ExecResult
-	c, args := a.buildCmd(a.files, a.in, &a.out)
-	cmd := exec.Command("jtime", append([]string{"-p=build-", "--", c}, args...)...)
-	cmd.Stdin = strings.NewReader(a.in.Stdin)
+	cmd := exec.Command("jtime", append([]string{"-p=build-", "--", c}, a...)...)
+	cmd.Stdin = strings.NewReader(in.Stdin)
 	cmd.Stdout = &stdout
 	cmd.Stderr = msgout
 	cmd.Run()
 
 	err := msgpack.Unmarshal(stdout.Bytes(), &result)
 	if err != nil {
-		return err
+		return ExecResult{}, err
 	}
-	a.out.Results["build"] = result
 
 	if result.Timeout {
-		return errors.New("Time limit exceeded")
+		return result, TimeoutError{}
 	} else if result.Code != 0 {
-		return errors.New("Build error")
+		return result, errors.New("Runtime error")
 	}
-	return nil
-}
-
-func (a *agent) run(msgout io.Writer) error {
-	if a.runCmd == nil {
-		return nil
-	}
-
-	var stdout bytes.Buffer
-	var result ExecResult
-	c, args := a.runCmd(a.files, a.in, &a.out)
-	cmd := exec.Command("jtime", append([]string{"-p=run-", "--", c}, args...)...)
-	cmd.Stdin = strings.NewReader(a.in.Stdin)
-	cmd.Stdout = &stdout
-	cmd.Stderr = msgout
-	cmd.Run()
-
-	err := msgpack.Unmarshal(stdout.Bytes(), &result)
-	if err != nil {
-		return err
-	}
-	a.out.Results["run"] = result
-
-	if result.Timeout {
-		return errors.New("Time limit exceeded")
-	} else if result.Code != 0 {
-		return errors.New("Runtime error")
-	}
-	return nil
-}
-
-func (a agent) close() {
-	e := msgpack.NewEncoder(os.Stdout)
-	e.Encode(a.out)
-	os.Stdout.Close()
+	return result, nil
 }

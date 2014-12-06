@@ -1,46 +1,48 @@
 package main
 
 import (
+	"errors"
 	"strings"
 
 	"github.com/h2so5/sango/src"
 )
 
-func build(files []string, in sango.Input, out *sango.Output) (string, []string) {
-	var args []string = []string{
-		"build",
-		"-o",
-		"main",
-	}
+type Agent struct {
+}
 
-	if race, ok := in.Options["race"].(bool); ok {
-		if race {
-			args = append(args, "-race")
+func (a Agent) Command(in sango.Input, n string) (string, []string, error) {
+	switch n {
+	case "build":
+		var args []string = []string{
+			"build",
+			"-o",
+			"main",
 		}
+
+		if race, ok := in.Options["race"].(bool); ok {
+			if race {
+				args = append(args, "-race")
+			}
+		}
+
+		return "go", append(args, sango.MapToFileList(in.Files)...), nil
+
+	case "run":
+		return "./main", nil, nil
 	}
-
-	return "go", append(args, files...)
+	return "", nil, errors.New("unknown command")
 }
 
-func run([]string, sango.Input, *sango.Output) (string, []string) {
-	return "./main", nil
-}
-
-func version() string {
+func (a Agent) Version() string {
 	v, _ := sango.System(".", "", "go", "version")
 	v = strings.Replace(v, "go version", "", -1)
 	return v
 }
 
-func test() ([]string, string, string) {
-	return []string{"test/hello.go"}, "", "Hello World"
+func (a Agent) Test() (map[string]string, string, string) {
+	return map[string]string{"test/hello.go": ""}, "", "Hello World"
 }
 
 func main() {
-	sango.Run(sango.AgentOption{
-		BuildCmd: build,
-		RunCmd:   run,
-		VerCmd:   version,
-		Test:     test,
-	})
+	sango.Run(Agent{})
 }
