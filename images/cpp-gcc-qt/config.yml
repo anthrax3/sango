@@ -1,0 +1,8 @@
+id: cpp-gcc-qt
+name: gcc/Qt5.3
+language: C++
+
+extensions:
+  - cpp
+
+acemode: c_cpp

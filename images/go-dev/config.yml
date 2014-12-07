@@ -1,0 +1,14 @@
+id: go-dev
+name: Development
+language: Go
+
+extensions:
+  - go
+
+acemode: golang
+
+options:
+  race:
+    title: Race Detector
+    type: bool
+    default: false
